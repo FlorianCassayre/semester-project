@@ -1,5 +1,5 @@
-import theory.ZFCTheorems
+import theory.NBGTheorems
 
-object Main extends App with ZFCTheorems {
+object Main extends App with NBGTheorems {
 
 }
