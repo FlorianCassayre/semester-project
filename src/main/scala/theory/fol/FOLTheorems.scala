@@ -21,7 +21,7 @@ trait FOLTheorems extends FOLRules {
   def impliesTransitive(pq: Theorem, qr: Theorem): Theorem = {
     val (ipq, iqr) = (toImplies(pq), toImplies(qr))
     (ipq.formula, iqr.formula) match {
-      case (Implies(p, q1), Implies(q2, r)) if q1 == q2 => impliesDistribute(p, q1, r)(addAssumption(p, qr))(ipq)
+      case (Implies(p, q1), Implies(q2, r)) if q1 == q2 => impliesDistribute(p, q1, r)(addAssumption(p, iqr))(ipq)
     }
   }
 
@@ -57,7 +57,23 @@ trait FOLTheorems extends FOLRules {
     impliesToIff(p, p)(pp)(pp)
   }
 
+  /** `p` given `p /\ q` */
+  def andExtractLeft(thm: Theorem): Theorem = thm.formula match {
+    case And(p, q) =>
+      doubleNegation(p)(hypothesis(p ->: False)(pf =>
+        andIff(p, q)(thm)(hypothesis(p)(tp =>
+          addAssumption(q, pf(tp))
+        ))
+      ))
+  }
 
+  /** `p <-> r` given `p <-> q` and `q <-> r` */
+  def iffTransitive(pq: Theorem, qr: Theorem): Theorem = (pq.formula, qr.formula) match {
+    case (Iff(p, q1), Iff(q2, r)) if q1 == q2 =>
+      impliesToIff(p, r)(impliesTransitive(pq, qr))(impliesTransitive(iffCommutative(qr), iffCommutative(pq)))
+  }
+
+  // TODO remove those: ?
   /** z /\ y given x /\ y and x <-> z */
   def ruleAndLeftSubst(and: Theorem, iff: Theorem): Theorem = (and.formula, iff.formula) match {
     case (And(x1, y), Iff(x2, z)) if x1 == x2 => ???
@@ -67,6 +83,5 @@ trait FOLTheorems extends FOLRules {
   def ruleIffAndImplies(thm: Theorem): Theorem = thm.formula match {
     case Iff(x, y) => ???
   }
-
 
 }

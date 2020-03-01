@@ -22,16 +22,7 @@ trait FOLRules extends FOL {
   /** `((p -> false) -> false) -> p` */
   def doubleNegation(p: Formula): Theorem = Theorem(((p ->: False) ->: False) ->: p)
 
-  // TODO forall separate
-
-  /** (forall x. y /\ z) <-> ((forall x. y) /\ (forall x. z)) */
-  def forallExtract(named: Named, y: Formula, z: Formula): Theorem =
-    Theorem(Iff(Forall(named, And(y, z)), And(Forall(named, y), Forall(named, z))))
-
-  /** (forall x. y) /\ (forall x. z)  given forall x. y /\ z */
-  def ruleForallExtract(thm: Theorem): Theorem = thm.formula match {
-    case Forall(named, And(y, z)) => forallExtract(named, y, z)
-  }
+  // --
 
   /** `p -> (forall x. p)` */
   def forallIntro(p: Formula, x: Named): Theorem = Theorem(p ->: Forall(x, p))
@@ -71,5 +62,10 @@ trait FOLRules extends FOL {
   /** `forall z. Q(z)` given `forall z. P(z)` and provided `P` returns `Q` */
   def forall(thm: Theorem)(certificate: Theorem => Theorem): Theorem = thm.formula match {
     case Forall(named, p) => Theorem(Forall(named, certificate(Theorem(p)).formula))
+  }
+
+  /** `forall x. P(x) /\ Q(x)` given `forall x. P(x)` and `forall x. Q(x)` */
+  def forallAnd(tp: Theorem, tq: Theorem): Theorem = (tp.formula, tq.formula) match {
+    case (Forall(x1, p), Forall(x2, q)) if x1 == x2 => Theorem(Forall(x1, And(p, q)))
   }
 }
