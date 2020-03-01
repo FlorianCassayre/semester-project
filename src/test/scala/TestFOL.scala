@@ -58,6 +58,10 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(andExtractLeft(p /\ q).formula == p)
   }
 
+  test("and combine") {
+    assert(andCombine(p, q).formula == p /\ q)
+  }
+
   test("iff transitive") {
     assert(iffTransitive(p <-> q, q <-> r).formula == p <-> r)
   }

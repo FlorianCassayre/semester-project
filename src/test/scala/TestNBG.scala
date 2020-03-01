@@ -11,20 +11,20 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
   val id = "w"
   val w = SetVariable(id)
 
-  /*test("equals subset") {
-    assert(equalsSubset(x, y).formula == Iff(Equals(x, y), And(SubsetEqual(x, y), SubsetEqual(y, x))))
-  }*/
+  test("equals subset") {
+    assert(equalsSubset(x, y).formula == ((x === y) <-> ((x sube y) /\ (y sube x))))
+  }
 
   test("equals reflexive") {
-    assert(equalsReflexive(x).formula == Equals(x, x))
+    assert(equalsReflexive(x).formula == (x === x))
   }
 
   test("equals symmetric") {
-    assert(equalsSymmetric(Equals(x, y)).formula == Equals(y, x))
+    assert(equalsSymmetric(x === y).formula == (y === x))
   }
 
   test("equals transitive") {
-    assert(equalsTransitive(Equals(x, y), Equals(y, z)).formula == Equals(x, z))
+    assert(equalsTransitive(x === y, y === z).formula == (x === z))
   }
 
 }

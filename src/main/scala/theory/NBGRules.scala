@@ -11,31 +11,31 @@ trait NBGRules extends NBGTheory {
   /** (x sube y) <-> (forall z. z in x -> z in y) */
   def subsetEqIff(x: AnySet, y: AnySet, id: Id): Theorem = {
     val z = SetVariable(id)
-    Theorem(Iff(SubsetEqual(x, y), Forall(z, Implies(Member(z, x), Member(z, y)))))
+    Theorem((x sube y) <-> Forall(z, (z in x) ->: (z in y)))
   }
 
   /** (x sub y) <-> (x sube y /\ x != y) */
   def subsetStrictIff(x: AnySet, y: AnySet): Theorem =
-    Theorem(Iff(SubsetStrict(x, y), And(SubsetEqual(x, y), Not(Equals(x, y)))))
+    Theorem((x sub y) <-> ((x sube y) /\ ~(x === y)))
 
   /** M(x) <-> exists y. x in y */
   def defIsSet(x: AnySet, id: Id): Theorem = {
     val y = SetVariable(id)
-    Theorem(Iff(IsSet(x), Exists(y, Member(x, y))))
+    Theorem(IsSet(x) <-> Exists(y, x in y))
   }
 
   /** Pr(x) <-> ~M(x) */
   def defIsClass(x: AnySet): Theorem =
-    Theorem(Iff(IsClass(x), Not(IsSet(x))))
+    Theorem(IsClass(x) <-> ~IsSet(x))
 
   // --
 
   def axiomP(x: AnySet, y: AnySet): Theorem = {
     val pair = PairSet(x, y)
-    Theorem(And(Member(x, pair), Member(y, pair)))
+    Theorem((x in pair) /\ (y in pair))
   }
 
-  def axiomN(x: AnySet): Theorem = Theorem(Not(Member(x, EmptySet)))
+  def axiomN(x: AnySet): Theorem = Theorem(~(x in EmptySet))
 
 
 }

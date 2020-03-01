@@ -67,21 +67,16 @@ trait FOLTheorems extends FOLRules {
       ))
   }
 
+  /** `p /\ q` given `p` and `q` */
+  def andCombine(tp: Theorem, tq: Theorem): Theorem = {
+    val (p, q) = (tp.formula, tq.formula)
+    andIff(p, q)(hypothesis(p ->: q ->: False)(pqf => pqf(tp)(tq)))
+  }
+
   /** `p <-> r` given `p <-> q` and `q <-> r` */
   def iffTransitive(pq: Theorem, qr: Theorem): Theorem = (pq.formula, qr.formula) match {
     case (Iff(p, q1), Iff(q2, r)) if q1 == q2 =>
       impliesToIff(p, r)(impliesTransitive(pq, qr))(impliesTransitive(iffCommutative(qr), iffCommutative(pq)))
-  }
-
-  // TODO remove those: ?
-  /** z /\ y given x /\ y and x <-> z */
-  def ruleAndLeftSubst(and: Theorem, iff: Theorem): Theorem = (and.formula, iff.formula) match {
-    case (And(x1, y), Iff(x2, z)) if x1 == x2 => ???
-  }
-
-  /** x -> y /\ y -> x given x <-> y */
-  def ruleIffAndImplies(thm: Theorem): Theorem = thm.formula match {
-    case Iff(x, y) => ???
   }
 
 }
