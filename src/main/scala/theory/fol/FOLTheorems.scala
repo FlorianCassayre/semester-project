@@ -2,64 +2,70 @@ package theory.fol
 
 trait FOLTheorems extends FOLRules {
 
-  override def generalModusPonens(pq: Theorem, p: Theorem): Theorem = pq.formula match {
-    case Implies(_, _) => modusPonens(pq, p)
-    case Iff(p1, q) if p1 == p.formula => modusPonens(modusPonens(iffToImplies1(p1, q), pq), p)
-    case Iff(q, p1) if p1 == p.formula => modusPonens(modusPonens(iffToImplies2(q, p1), pq), p)
-  }
-
-  /** `p -> q` given `p <-> q`, or `F` given `F` */
-  def toImplies(pq: Theorem): Theorem = pq.formula match {
-    case Iff(p, q) => iffToImplies1(p, q)(pq)
-    case _ => pq
+  /** `p -> q` given `p <-> q` */
+  def toImplies[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q]): Theorem[P ->: Q] = {
+    theoremToImplies(iffToImplies1(pq.formula.x, pq.formula.y))(pq)
   }
 
   /** `p -> q` given `q` */
-  def addAssumption(p: Formula, q: Theorem): Theorem = addImplies(q.formula, p)(q)
+  def addAssumption[P <: Formula, Q <: Formula](p: P, q: Theorem[Q]): Theorem[P ->: Q] = addImplies(q.formula, p)(q)
 
-  /** `p -> r` given `p [<]-> q` and `q [<]-> r` */
-  def impliesTransitive(pq: Theorem, qr: Theorem): Theorem = {
-    val (ipq, iqr) = (toImplies(pq), toImplies(qr))
-    (ipq.formula, iqr.formula) match {
-      case (Implies(p, q1), Implies(q2, r)) if q1 == q2 => impliesDistribute(p, q1, r)(addAssumption(p, iqr))(ipq)
+  /** `p -> r` given `p -> q` and `q -> r` */
+  def impliesTransitive[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P ->: Q], qr: Theorem[Q ->: R]): Theorem[P ->: R] =
+    (pq.formula, qr.formula) match {
+      case (p ->: q1, q2 ->: r) if q1 == q2 => impliesDistribute[P, Q, R](p, q1, r)(addAssumption(p, qr))(pq)
     }
-  }
+
+  /** `p -> r` given `p <-> q` and `q -> r` */
+  def impliesTransitive1[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P <-> Q], qr: Theorem[Q ->: R]): Theorem[P ->: R] =
+    impliesTransitive(toImplies(pq), qr)
+
+  /** `p -> r` given `p -> q` and `q <-> r` */
+  def impliesTransitive2[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P ->: Q], qr: Theorem[Q <-> R]): Theorem[P ->: R] =
+    impliesTransitive(pq, toImplies(qr))
+
+  /** `p -> r` given `p <-> q` and `q <-> r` */
+  def impliesTransitive3[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P <-> Q], qr: Theorem[Q <-> R]): Theorem[P ->: R] =
+    impliesTransitive(toImplies(pq), toImplies(qr))
 
   /** `(q -> p -> r)` given `(p -> q -> r)` */
-  def swapAssumptions(pqr: Theorem): Theorem = pqr.formula match {
-    case Implies(p, Implies(q, r)) => impliesTransitive(addImplies(q, p), impliesDistribute(p, q, r)(pqr))
-  }
+  def swapAssumptions[P <: Formula, Q <: Formula, R <: Formula](pqr: Theorem[P ->: Q ->: R]): Theorem[Q ->: P ->: R] =
+    pqr.formula match {
+      case p ->: q ->: r =>
+        impliesTransitive(addImplies(q, p), impliesDistribute(p, q, r)(pqr))
+    }
 
   /** `q <-> p` given `p <-> q` */
-  def iffCommutative(thm: Theorem): Theorem = thm.formula match {
-    case Iff(p, q) => impliesToIff(q, p)(iffToImplies2(p, q)(thm))(iffToImplies1(p, q)(thm))
+  def iffCommutative[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]): Theorem[Q <-> P] = {
+    val (p, q) = (thm.formula.x, thm.formula.y)
+    impliesToIff(q, p)(iffToImplies2(p, q)(thm))(iffToImplies1(p, q)(thm))
   }
 
   /** `(q /\ p)` given `(p /\ q)` */
-  def andCommutative(thm: Theorem): Theorem = thm.formula match {
-    case And(p, q) =>
-      andIff(q, p)(hypothesis(q ->: p ->: False) { qpf =>
+  def andCommutative[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[Q /\ P] = thm.formula match {
+    case p /\ q =>
+      iffCommutative(andIff(q, p))(hypothesis(q ->: p ->: False) { qpf =>
         andIff(p, q)(thm)(swapAssumptions(qpf))
       })
   }
 
   /** `(q \/ p)` given `(p \/ q)` */
-  def orCommutative(thm: Theorem): Theorem = thm.formula match {
-    case Or(p, q) =>
-      orIff(q, p)(notIff(~q /\ ~p)(hypothesis(~q /\ ~p) { hyp =>
+  def orCommutative[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]): Theorem[Q \/ P] = thm.formula match {
+    case p \/ q =>
+      iffCommutative(orIff(q, p))(iffCommutative(notIff(~q /\ ~p))(hypothesis(~q /\ ~p) { hyp =>
         notIff(~p /\ ~q)(orIff(p, q)(thm))(andCommutative(hyp))
       }))
   }
 
   /** `p <-> p` */
-  def iffReflexive(p: Formula): Theorem = {
+  def iffReflexive[P <: Formula](p: P): Theorem[P <-> P] = {
     val pp = hypothesis(p)(identity)
     impliesToIff(p, p)(pp)(pp)
   }
 
   /** `p` given `p /\ q` */
-  def andExtractLeft(thm: Theorem): Theorem = thm.formula match {
-    case And(p, q) =>
+  def andExtractLeft[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[P] = thm.formula match {
+    case p /\ q =>
       doubleNegation(p)(hypothesis(p ->: False)(pf =>
         andIff(p, q)(thm)(hypothesis(p)(tp =>
           addAssumption(q, pf(tp))
@@ -68,15 +74,15 @@ trait FOLTheorems extends FOLRules {
   }
 
   /** `p /\ q` given `p` and `q` */
-  def andCombine(tp: Theorem, tq: Theorem): Theorem = {
+  def andCombine[P <: Formula, Q <: Formula](tp: Theorem[P], tq: Theorem[Q]): Theorem[P /\ Q] = {
     val (p, q) = (tp.formula, tq.formula)
-    andIff(p, q)(hypothesis(p ->: q ->: False)(pqf => pqf(tp)(tq)))
+    iffCommutative(andIff(p, q))(hypothesis(p ->: q ->: False)(pqf => pqf(tp)(tq)))
   }
 
   /** `p <-> r` given `p <-> q` and `q <-> r` */
-  def iffTransitive(pq: Theorem, qr: Theorem): Theorem = (pq.formula, qr.formula) match {
-    case (Iff(p, q1), Iff(q2, r)) if q1 == q2 =>
-      impliesToIff(p, r)(impliesTransitive(pq, qr))(impliesTransitive(iffCommutative(qr), iffCommutative(pq)))
+  def iffTransitive[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P <-> Q], qr: Theorem[Q <-> R]): Theorem[P <-> R] = (pq.formula, qr.formula) match {
+    case (p <-> q1, q2 <-> r) if q1 == q2 =>
+      impliesToIff(p, r)(impliesTransitive(toImplies(pq), toImplies(qr)))(impliesTransitive(toImplies(iffCommutative(qr)), toImplies(iffCommutative(pq))))
   }
 
 }

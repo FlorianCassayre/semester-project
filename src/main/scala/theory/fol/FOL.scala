@@ -39,35 +39,66 @@ trait FOL {
       case Equals(a, b) => Set.empty // ??? // TODO
       case _ => Set.empty // ??? // TODO
     }
-
-    def ->:(that: Formula): Formula = Implies(that, this)
-    def <->(that: Formula): Formula = Iff(this, that)
-    def /\(that: Formula): Formula = And(this, that)
-    def \/(that: Formula): Formula = Or(this, that)
-    def unary_~ : Formula = Not(this)
   }
   case class Variable(id: Id) extends Formula with Named
-  case class Implies(x: Formula, y: Formula) extends Formula
-  case class Not(x: Formula) extends Formula
-  case class Iff(x: Formula, y: Formula) extends Formula
-  case class Or(x: Formula, y: Formula) extends Formula
-  case class And(x: Formula, y: Formula) extends Formula
-  case class Forall(named: Named, formula: Formula) extends Formula
-  case class Exists(named: Named, formula: Formula) extends Formula
+  case class Implies[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
+  case class Not[P <: Formula](x: P) extends Formula
+  case class Iff[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
+  case class Or[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
+  case class And[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
+  case class Forall[V <: Named, P <: Formula](named: V, formula: P) extends Formula
+  case class Exists[V <: Named, P <: Formula](named: V, formula: P) extends Formula
   case object False extends Formula
+  type False = False.type
   case object True extends Formula
-  case class Equals(a: Theory, b: Theory) extends Formula
+  type True = True.type
+  case class Equals[X <: Theory, Y <: Theory](a: X, b: Y) extends Formula
 
-  final class Theorem private(val formula: Formula) {
-    def apply(p: Theorem): Theorem = generalModusPonens(this, p) // Modus ponens shorthand
+  object ->: { def unapply[P <: Formula, Q <: Formula](arg: P ->: Q): Option[(P, Q)] = Some(arg.x, arg.y) }
+  object ~ { def unapply[P <: Formula](arg: ~[P]): Option[P] = Some(arg.x) }
+  object <-> { def unapply[P <: Formula, Q <: Formula](arg: P <-> Q): Option[(P, Q)] = Some(arg.x, arg.y) }
+  object \/ { def unapply[P <: Formula, Q <: Formula](arg: P \/ Q): Option[(P, Q)] = Some(arg.x, arg.y) }
+  object /\ { def unapply[P <: Formula, Q <: Formula](arg: P /\ Q): Option[(P, Q)] = Some(arg.x, arg.y) }
+  object === { def unapply[S <: Theory, T <: Theory](arg: S === T): Option[(S, T)] = Some(arg.a, arg.b) }
+
+  final class ExtendedFormula[F <: Formula](formula: F) {
+    def ->:[P <: Formula](that: P): P ->: F = Implies(that, formula) // Special, due to right associativity
+    def <->[P <: Formula](that: P): F <-> P = Iff(formula, that)
+    def /\[P <: Formula](that: P): F /\ P = And(formula, that)
+    def \/[P <: Formula](that: P): F \/ P = Or(formula, that)
+    def unary_~ : ~[F] = Not(formula)
+  }
+  implicit def formulaToExtended[F <: Formula](formula: F): ExtendedFormula[F] = new ExtendedFormula[F](formula)
+
+  type ->:[P <: Formula, Q <: Formula] = Implies[P, Q]
+  type ~[P <: Formula] = Not[P]
+  type <->[P <: Formula, Q <: Formula] = Iff[P, Q]
+  type \/[P <: Formula, Q <: Formula] = Or[P, Q]
+  type /\[P <: Formula, Q <: Formula] = And[P, Q]
+  type ===[T <: Theory, S <: Theory] = Equals[T, S]
+
+  final class Theorem[+F <: Formula] private(val formula: F) {
     override def toString: String = formula.toString
   }
   object Theorem {
-    private[theory] def apply(formula: Formula): Theorem = new Theorem(formula)
+    private[theory] def apply[F <: Formula](formula: F): Theorem[F] = new Theorem(formula)
   }
 
-  /** `q` given `p [<]-> q` and `p` */
-  def generalModusPonens(pq: Theorem, p: Theorem): Theorem
+  // Modus ponens shorthands
+  final class ImpliesTheorem[P <: Formula, Q <: Formula](theorem: Theorem[P ->: Q]) {
+    def apply(p: Theorem[P]): Theorem[Q] = impliesModusPonens(theorem, p)
+  }
+  implicit def theoremToImplies[P <: Formula, Q <: Formula](theorem: Theorem[P ->: Q]): ImpliesTheorem[P, Q] =
+    new ImpliesTheorem[P, Q](theorem)
+  final class IffTheorem[P <: Formula, Q <: Formula](theorem: Theorem[P <-> Q]) {
+    def apply(p: Theorem[P]): Theorem[Q] = iffModusPonens(theorem, p)
+  }
+  implicit def theoremToIff[P <: Formula, Q <: Formula](theorem: Theorem[P <-> Q]): IffTheorem[P, Q] =
+    new IffTheorem[P, Q](theorem)
+
+
+  def impliesModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q]
+  def iffModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q], p: Theorem[P]): Theorem[Q]
 
   private var i: Int = 0
   def fresh(): String = {

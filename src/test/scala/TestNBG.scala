@@ -4,7 +4,7 @@ import theory.NBGTheorems
 class TestNBG extends AnyFunSuite with NBGTheorems {
 
   // Shorthand
-  implicit def toTheorem(f: Formula): Theorem = oops(f)
+  implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
 
   val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
   val (x, y, z) = (SetVariable("x"), SetVariable("y"), SetVariable("z"))

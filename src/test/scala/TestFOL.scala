@@ -4,21 +4,16 @@ import theory.fol.FOLTheorems
 class TestFOL extends AnyFunSuite with FOLTheorems {
 
   // Shorthand
-  implicit def toTheorem(f: Formula): Theorem = oops(f)
+  implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
 
   val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
 
   test("general modus ponens") {
-    def check(f: (Formula, Formula) => Formula): Unit = assert(generalModusPonens(f(p, q), p).formula == q)
-    check(_ ->: _)
-    check(_ <-> _)
-    check((a, b) => b <-> a)
+    assert(impliesModusPonens(p ->: q, p).formula == q)
+    assert(iffModusPonens(p <-> q, p).formula == q)
   }
 
-  test("iff to implies or identity") {
-    assert(toImplies(p).formula == p)
-    assert(toImplies(p /\ q).formula == p /\ q)
-    assert(toImplies(p ->: q).formula == p ->: q)
+  test("iff to implies") {
     assert(toImplies(p <-> q).formula == p ->: q)
   }
 
@@ -26,12 +21,9 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(addAssumption(p, q).formula == p ->: q)
   }
 
-  test("implies transitive inherits") {
+  test("implies transitive") {
     val pr = p ->: r
     assert(impliesTransitive(p ->: q, q ->: r).formula == pr)
-    assert(impliesTransitive(p <-> q, q ->: r).formula == pr)
-    assert(impliesTransitive(p ->: q, q <-> r).formula == pr)
-    assert(impliesTransitive(p <-> q, q <-> r).formula == pr)
   }
 
   test("swap assumptions") {
