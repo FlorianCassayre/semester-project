@@ -37,5 +37,11 @@ trait NBGRules extends NBGTheory {
 
   /*def axiomN(x: AnySet): Theorem = Theorem(~(x in EmptySet))*/
 
+  /** forall u. (u in (x inter y)) <-> ((u in x) /\ (u in y)) */
+  def intersectIff[X <: AnySet, Y <: AnySet](x: X, y: Y, id: Id): Theorem[Forall[SetVariable, Member[SetVariable, Intersect[X, Y]] <-> (Member[SetVariable, X] /\ Member[SetVariable, Y])]] = {
+    val u = SetVariable(id)
+    Theorem(Forall(u, (u in (x inter y)) <-> ((u in x) /\ (u in y))))
+  }
+
 
 }

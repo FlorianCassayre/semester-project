@@ -85,4 +85,15 @@ trait FOLTheorems extends FOLRules {
       impliesToIff(p, r)(impliesTransitive(toImplies(pq), toImplies(qr)))(impliesTransitive(toImplies(iffCommutative(qr)), toImplies(iffCommutative(pq))))
   }
 
+  /** `p <-> q` given `p -> q` and `q -> p` */
+  def impliesToIffRule[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], qp: Theorem[Q ->: P]): Theorem[P <-> Q] = (pq.formula, qp.formula) match {
+    case (p1 ->: q1, q2 ->: p2) if p1 == p2 && q1 == q2 =>
+    impliesToIff(p1, q1)(pq)(qp)
+  }
+
+  def impliesToIffForallRule[P <: Formula, Q <: Formula, N <: Named](pq: Theorem[Forall[N, P ->: Q]], qp: Theorem[Forall[N, Q ->: P]]): Theorem[Forall[N, P <-> Q]] = {
+    val combined = forallAnd(pq, qp)
+    forall(combined)(all => impliesToIffRule(andExtractLeft(all), andExtractLeft(andCommutative(all))))
+  }
+
 }

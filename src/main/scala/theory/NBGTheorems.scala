@@ -60,4 +60,24 @@ trait NBGTheorems extends NBGRules {
   //def inclusionIsSet(x: AnySet, y: AnySet): Theorem = ???
 
 
+  /** (x inter y) = (y inter x) */
+  def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
+    val id = fresh()
+    val z = SetVariable(id)
+
+    def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Forall[SetVariable, Member[SetVariable, Intersect[A, B]] ->: Member[SetVariable, Intersect[B, A]]]] =
+      forall(
+        forallAnd(
+          forall(intersectIff(a, b, id)) { all =>
+            impliesTransitive(toImplies(all),
+              hypothesis((z in a) /\ (z in b))(andCommutative)
+            )
+          },
+          forall(intersectIff(b, a, id))(iffCommutative)
+        )
+      )(all => impliesTransitive(andExtractLeft(all), toImplies(andExtractLeft(andCommutative(all)))))
+
+    iffCommutative(equalsIff(x inter y, y inter x, id))(impliesToIffForallRule(schema(x, y), schema(y, x)))
+  }
+
 }
