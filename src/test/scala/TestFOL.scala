@@ -8,6 +8,14 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
 
   val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
 
+  test("add implies") {
+    assert(addImplies(p, q).formula == p ->: q ->: p)
+  }
+
+  test("implies distribute") {
+    assert(impliesDistribute(p, q, r).formula == (p ->: q ->: r) ->: (p ->: q) ->: (p ->: r))
+  }
+
   test("general modus ponens") {
     assert(impliesModusPonens(p ->: q, p).formula == q)
     assert(iffModusPonens(p <-> q, p).formula == q)

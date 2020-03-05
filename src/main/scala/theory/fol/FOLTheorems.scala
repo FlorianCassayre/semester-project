@@ -2,6 +2,13 @@ package theory.fol
 
 trait FOLTheorems extends FOLRules {
 
+  /** `p -> q -> p` */
+  def addImplies[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[P ->: Q ->: P] = hypothesis(p)(tp => hypothesis(q)(_ => tp))
+
+  /** `(p -> q -> r) -> (p -> q) -> (p -> r)` */
+  def impliesDistribute[P <: Formula, Q <: Formula, R <: Formula](p: P, q: Q, r: R): Theorem[(P ->: Q ->: R) ->: (P ->: Q) ->: (P ->: R)] =
+    hypothesis(p ->: q ->: r)(pqr => hypothesis(p ->: q)(pq => hypothesis(p)(tp => pqr(tp)(pq(tp)))))
+
   /** `p -> q` given `p <-> q` */
   def toImplies[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q]): Theorem[P ->: Q] = {
     theoremToImplies(iffToImplies1(pq.formula.x, pq.formula.y))(pq)

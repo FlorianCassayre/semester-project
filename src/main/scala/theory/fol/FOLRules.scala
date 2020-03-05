@@ -14,18 +14,9 @@ trait FOLRules extends FOL {
   def generalize[P <: Formula, N <: Named](p: Theorem[P], x: N): Theorem[Forall[N, P]] =
     Theorem(Forall(x, p.formula)) // TODO check free?
 
-  /** `p -> q -> p` */
-  def addImplies[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[P ->: Q ->: P] = Theorem(p ->: q ->: p)
-
-  /** `(p -> q -> r) -> (p -> q) -> (p -> r)` */
-  def impliesDistribute[P <: Formula, Q <: Formula, R <: Formula](p: P, q: Q, r: R): Theorem[(P ->: Q ->: R) ->: (P ->: Q) ->: (P ->: R)] =
-    Theorem((p ->: q ->: r) ->: (p ->: q) ->: (p ->: r))
-
   /** `((p -> false) -> false) -> p` */
   def doubleNegation[P <: Formula](p: P): Theorem[((P ->: False) ->: False) ->: P] =
     Theorem(((p ->: False) ->: False) ->: p)
-
-  // --
 
   /** `p -> (forall x. p)` */
   def forallIntro[P <: Formula, N <: Named](p: P, x: N): Theorem[P ->: Forall[N, P]] = Theorem(p ->: Forall(x, p))
