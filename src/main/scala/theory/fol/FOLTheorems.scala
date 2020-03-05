@@ -98,9 +98,4 @@ trait FOLTheorems extends FOLRules {
     impliesToIff(p1, q1)(pq)(qp)
   }
 
-  def impliesToIffForallRule[P <: Formula, Q <: Formula, N <: Named](pq: Theorem[Forall[N, P ->: Q]], qp: Theorem[Forall[N, Q ->: P]]): Theorem[Forall[N, P <-> Q]] = {
-    val combined = forallAnd(pq, qp)
-    forall(combined)(all => impliesToIffRule(andExtractLeft(all), andExtractLeft(andCommutative(all))))
-  }
-
 }

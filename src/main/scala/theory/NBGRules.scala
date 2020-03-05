@@ -2,16 +2,27 @@ package theory
 
 trait NBGRules extends NBGTheory {
 
-  /** `(x = y) <-> (forall z. z in x <-> z in y)` */
-  def equalsIff[X <: AnySet, Y <: AnySet](x: X, y: Y, id: Id): Theorem[(X === Y) <-> Forall[SetVariable, Member[SetVariable, X] <-> Member[SetVariable, Y]]] = {
-    val z = SetVariable(id)
-    Theorem((x === y) <-> Forall(z, (z in x) <-> (z in y)))
+  type FA = "a"
+  type FB = "b"
+
+  /** `(x = y) -> (z in x <-> z in y)` */
+  def equalsIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[(X === Y) ->: (Member[Z, X] <-> Member[Z, Y])] =
+    Theorem((x === y) ->: ((z in x) <-> (z in y)))
+
+  /** `(a(x, y) in x <-> a(x, y) in y) -> (x = y)` */
+  def equalsIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(Member[SkolemFunction2[FA, X, Y], X] <-> Member[SkolemFunction2[FA, X, Y], Y]) ->: (X === Y)] = {
+    val a = SkolemFunction2[FA, X, Y](x, y)
+    Theorem(((a in x) <-> (a in y)) ->: (x === y))
   }
 
-  /** (x sube y) <-> (forall z. z in x -> z in y) */
-  def subsetEqIff[X <: AnySet, Y <: AnySet](x: X, y: Y, id: Id): Theorem[SubsetEqual[X, Y] <-> Forall[SetVariable, Member[SetVariable, X] ->: Member[SetVariable, Y]]] = {
-    val z = SetVariable(id)
-    Theorem((x sube y) <-> Forall(z, (z in x) ->: (z in y)))
+  /** (x sube y) -> (z in x -> z in y) */
+  def subsetEqIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[SubsetEqual[X, Y] ->: (Member[Z, X] ->: Member[Z, Y])] =
+    Theorem((x sube y) ->: ((z in x) ->: (z in y)))
+
+  /** (b(x, y) in x -> b(x, y) in y) -> (x sube y) */
+  def subsetEqIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(Member[SkolemFunction2[FB, X, Y], X] ->: Member[SkolemFunction2[FB, X, Y], Y]) ->: SubsetEqual[X, Y]] = {
+    val b = SkolemFunction2[FB, X, Y](x, y)
+    Theorem(((b in x) ->: (b in y)) ->: (x sube y))
   }
 
   /** (x sub y) <-> (x sube y /\ x != y) */
@@ -37,11 +48,8 @@ trait NBGRules extends NBGTheory {
 
   /*def axiomN(x: AnySet): Theorem = Theorem(~(x in EmptySet))*/
 
-  /** forall u. (u in (x inter y)) <-> ((u in x) /\ (u in y)) */
-  def intersectIff[X <: AnySet, Y <: AnySet](x: X, y: Y, id: Id): Theorem[Forall[SetVariable, Member[SetVariable, Intersect[X, Y]] <-> (Member[SetVariable, X] /\ Member[SetVariable, Y])]] = {
-    val u = SetVariable(id)
-    Theorem(Forall(u, (u in (x inter y)) <-> ((u in x) /\ (u in y))))
-  }
-
+  /** z in (x inter y)) <-> ((z in x) /\ (z in y)) */
+  def intersectIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Member[Z, Intersect[X, Y]] <-> (Member[Z, X] /\ Member[Z, Y])] =
+    Theorem((z in (x inter y)) <-> ((z in x) /\ (z in y)))
 
 }

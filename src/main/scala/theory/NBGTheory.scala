@@ -27,6 +27,10 @@ trait NBGTheory extends FOLTheorems {
   case class Union[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Difference[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
 
+  case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
+  case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet
+  case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit v: ValueOf[I]) extends AnySet
+
   final class ExtendedSet[S <: AnySet](set: S) {
     // http://asciimath.org/
     def ===[T <: AnySet](that: T): S === T = Equals(set, that)

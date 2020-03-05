@@ -11,34 +11,7 @@ trait FOL {
   }
 
   abstract class Formula {
-    private def checkExclusive(a: Set[Named], b: Set[Named]): Unit =
-      assert(a.forall(e => b.filter(_.id == e.id).forall(_ == e)))
 
-    this match {
-      case Implies(x, y) => checkExclusive(x.ids, y.ids)
-      case Iff(x, y) => checkExclusive(x.ids, y.ids)
-      case Or(x, y) => checkExclusive(x.ids, y.ids)
-      case And(x, y) => checkExclusive(x.ids, y.ids)
-      case Forall(named, formula) => checkExclusive(Set(named), formula.ids)
-      case Exists(named, formula) => checkExclusive(Set(named), formula.ids)
-      case Equals(a, b) =>  // ??? // TODO
-        // TODO membership
-      case _ =>
-    }
-
-    def ids: Set[Named] = this match {
-      case v@Variable(id) => Set(v)
-      case Implies(x, y) => x.ids ++ y.ids
-      case Not(x) => x.ids
-      case Iff(x, y) => x.ids ++ y.ids
-      case Or(x, y) => x.ids ++ y.ids
-      case And(x, y) => x.ids ++ y.ids
-      case Forall(named, f) => f.ids + named
-      case Exists(named, f) => f.ids + named
-      case False | True => Set.empty
-      case Equals(a, b) => Set.empty // ??? // TODO
-      case _ => Set.empty // ??? // TODO
-    }
   }
   case class Variable(id: Id) extends Formula with Named
   case class Implies[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
@@ -46,8 +19,6 @@ trait FOL {
   case class Iff[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
   case class Or[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
   case class And[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
-  case class Forall[V <: Named, P <: Formula](named: V, formula: P) extends Formula
-  case class Exists[V <: Named, P <: Formula](named: V, formula: P) extends Formula
   case object False extends Formula
   type False = False.type
   case object True extends Formula
@@ -99,12 +70,5 @@ trait FOL {
 
   def impliesModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q]
   def iffModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q], p: Theorem[P]): Theorem[Q]
-
-  private var i: Int = 0
-  def fresh(): String = {
-    val id = i
-    i += 1
-    "$" + id
-  }
 
 }

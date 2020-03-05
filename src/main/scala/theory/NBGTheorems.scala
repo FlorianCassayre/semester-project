@@ -4,55 +4,41 @@ trait NBGTheorems extends NBGRules {
 
   /** `(x = y) <-> ((x sube y) /\ (y sube x))` */
   def equalsSubset[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (SubsetEqual[X, Y] /\ SubsetEqual[Y, X])] = {
-    val id = fresh()
-    val z = SetVariable(id)
     val to = hypothesis(x === y) { xy =>
       andCombine(
-        iffCommutative(subsetEqIff(x, y, id))(forall(equalsIff(x, y, id)(xy))(toImplies)),
-        iffCommutative(subsetEqIff(y, x, id))(forall(equalsIff(y, x, id)(equalsSymmetric(xy)))(toImplies))
+        subsetEqIff2(x, y)(toImplies(equalsIff1(x, y, SkolemFunction2[FB, X, Y](x, y))(xy))),
+        subsetEqIff2(y, x)(toImplies(equalsIff1(y, x, SkolemFunction2[FB, Y, X](y, x))(equalsSymmetric(xy))))
       )
     }
     val from = hypothesis((x sube y) /\ (y sube x)) { sub =>
-      val (lhs, rhs) = (subsetEqIff(x, y, id)(andExtractLeft(sub)), subsetEqIff(y, x, id)(andExtractLeft(andCommutative(sub))))
-      iffCommutative(equalsIff(x, y, id))(
-        forall(forallAnd(lhs, rhs)) { and =>
-          impliesToIff(z in x, z in y)(andExtractLeft(and))(andExtractLeft(andCommutative(and)))
-        }
-      )
+      val z = SkolemFunction2[FA, X, Y](x, y)
+      val (lhs, rhs) = (subsetEqIff1(x, y, z)(andExtractLeft(sub)), subsetEqIff1(y, x, z)(andExtractLeft(andCommutative(sub))))
+      equalsIff2(x, y) {
+        val and = andCombine(lhs, rhs)
+        impliesToIff(z in x, z in y)(andExtractLeft(and))(andExtractLeft(andCommutative(and)))
+      }
     }
 
     impliesToIff(x === y, (x sube y) /\ (y sube x))(to)(from)
   }
 
   /** `x = x` */
-  def equalsReflexive[X <: AnySet](x: X): Theorem[X === X] = {
-    val id = fresh()
-    val z = SetVariable(id)
-    toImplies(iffCommutative(equalsIff(x, x, id)))(generalize(iffReflexive(z in x), z))
-  }
+  def equalsReflexive[X <: AnySet](x: X): Theorem[X === X] =
+    equalsIff2(x, x)(iffReflexive(SkolemFunction2[FA, X, X](x, x) in x))
 
   /** `y = x` given `x = y` */
   def equalsSymmetric[X <: AnySet, Y <: AnySet](thm: Theorem[X === Y]): Theorem[Y === X] = thm.formula match {
     case x === y =>
-      val id = fresh()
-      iffCommutative(equalsIff(y, x, id))(forall(equalsIff(x, y, id)(thm))(iffCommutative))
+      equalsIff2(y, x)(iffCommutative(equalsIff1(x, y, SkolemFunction2[FA, Y, X](y, x))(thm)))
   }
 
   /** `x = z` given `x = y` and `y = z` */
   def equalsTransitive[X <: AnySet, Y <: AnySet, Z <: AnySet](xy: Theorem[X === Y], yz: Theorem[Y === Z]): Theorem[X === Z] = (xy.formula, yz.formula) match {
     case (x === y1, y2 === z) if y1 == y2 =>
-      val id = fresh()
-      val res = hypothesis(x === y1) { hyp1 =>
-        val xAy = equalsIff(x, y1, id)(hyp1)
-        hypothesis(y1 === z) { hyp2 =>
-          val yAz = equalsIff(y1, z, id)(hyp2)
-          val xIz = forall(forallAnd(xAy, yAz))(thm =>
-            iffTransitive(andExtractLeft(thm), andExtractLeft(andCommutative(thm)))
-          )
-          iffCommutative(equalsIff(x, z, id))(xIz)
-        }
-      }
-      res(xy)(yz)
+      val f = SkolemFunction2[FA, X, Z](x, z)
+      val and = andCombine(equalsIff1(x, y1, f)(xy), equalsIff1(y1, z, f)(yz))
+
+      equalsIff2(x, z)(iffTransitive(andExtractLeft(and), andExtractLeft(andCommutative(and))))
   }
 
 
@@ -62,22 +48,17 @@ trait NBGTheorems extends NBGRules {
 
   /** (x inter y) = (y inter x) */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
-    val id = fresh()
-    val z = SetVariable(id)
+    type C = SkolemFunction2[FA, Intersect[X, Y], Intersect[Y, X]]
 
-    def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Forall[SetVariable, Member[SetVariable, Intersect[A, B]] ->: Member[SetVariable, Intersect[B, A]]]] =
-      forall(
-        forallAnd(
-          forall(intersectIff(a, b, id)) { all =>
-            impliesTransitive(toImplies(all),
-              hypothesis((z in a) /\ (z in b))(andCommutative)
-            )
-          },
-          forall(intersectIff(b, a, id))(iffCommutative)
-        )
-      )(all => impliesTransitive(andExtractLeft(all), toImplies(andExtractLeft(andCommutative(all)))))
+    def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Member[C, Intersect[A, B]] ->: Member[C, Intersect[B, A]]] = {
+      val c: C = SkolemFunction2(x inter y, y inter x)
+      impliesTransitive(
+        impliesTransitive(toImplies(intersectIff(a, b, c)), hypothesis((c in a) /\ (c in b))(andCommutative)),
+        toImplies(iffCommutative(intersectIff(b, a, c)))
+      )
+    }
 
-    iffCommutative(equalsIff(x inter y, y inter x, id))(impliesToIffForallRule(schema(x, y), schema(y, x)))
+    equalsIff2(x inter y, y inter x)(impliesToIffRule(schema(x, y), schema(y, x)))
   }
 
 }

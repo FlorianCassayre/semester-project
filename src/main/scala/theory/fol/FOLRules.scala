@@ -10,16 +10,9 @@ trait FOLRules extends FOL {
     case p1 ->: q if p.formula == p1 => Theorem(q)
   }
 
-  /** `forall x. p` given `p` */
-  def generalize[P <: Formula, N <: Named](p: Theorem[P], x: N): Theorem[Forall[N, P]] =
-    Theorem(Forall(x, p.formula)) // TODO check free?
-
   /** `((p -> false) -> false) -> p` */
   def doubleNegation[P <: Formula](p: P): Theorem[((P ->: False) ->: False) ->: P] =
     Theorem(((p ->: False) ->: False) ->: p)
-
-  /** `p -> (forall x. p)` */
-  def forallIntro[P <: Formula, N <: Named](p: P, x: N): Theorem[P ->: Forall[N, P]] = Theorem(p ->: Forall(x, p))
 
   /** `(p <-> q) -> p -> q` */
   def iffToImplies1[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[(P <-> Q) ->: P ->: Q] =
@@ -47,10 +40,6 @@ trait FOLRules extends FOL {
   def orIff[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[(P \/ Q) <-> ~[~[P] /\ ~[Q]]] =
     Theorem((p \/ q) <-> ~(~p /\ ~q))
 
-  /** `(exists x. p) <-> ~(forall x. ~p)` */
-  def existsIff[P <: Formula, N <: Named](p: P, x: N): Theorem[Exists[N, P] <-> ~[Forall[N, ~[P]]]] =
-    Theorem(Exists(x, p) <-> ~Forall(x, ~p))
-
   // --
 
   /** `p -> q` given `q` in the context of `p` */
@@ -58,18 +47,6 @@ trait FOLRules extends FOL {
     val q = certificate(Theorem(p)).formula
     Theorem(p ->: q)
   }
-
-  /** `forall z. Q(z)` given `forall z. P(z)` and provided `P` returns `Q` */
-  def forall[P <: Formula, Q <: Formula, N <: Named](thm: Theorem[Forall[N, P]])(certificate: Theorem[P] => Theorem[Q]): Theorem[Forall[N, Q]] =
-    thm.formula match {
-      case Forall(named, p) => Theorem(Forall(named, certificate(Theorem(p)).formula))
-    }
-
-  /** `forall x. P(x) /\ Q(x)` given `forall x. P(x)` and `forall x. Q(x)` */
-  def forallAnd[P <: Formula, Q <: Formula, N <: Named](tp: Theorem[Forall[N, P]], tq: Theorem[Forall[N, Q]]): Theorem[Forall[N, P /\ Q]] =
-    (tp.formula, tq.formula) match {
-      case (Forall(x1, p), Forall(x2, q)) if x1 == x2 => Theorem(Forall(x1, And(p, q)))
-    }
 
   // --
 
