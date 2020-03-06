@@ -27,6 +27,10 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(equalsTransitive(x === y, y === z).formula == (x === z))
   }
 
+  test("equals is set") {
+    assert(equalsIsSet(IsSet(z) /\ (z === y)).formula == IsSet(y))
+  }
+
   test("intersect commutative") {
     assert(intersectCommutative(x, y).formula == ((x inter y) === (y inter x)))
   }

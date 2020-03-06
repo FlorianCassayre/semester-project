@@ -41,9 +41,13 @@ trait NBGTheorems extends NBGRules {
       equalsIff2(x, z)(iffTransitive(andExtractLeft(and), andExtractLeft(andCommutative(and))))
   }
 
+  /** `M(Y)` given `(M(Z) /\ (Z = Y))` */
+  def equalsIsSet[Y <: AnySet, Z <: AnySet](thm: Theorem[IsSet[Z] /\ (Z === Y)]): Theorem[IsSet[Y]] = thm.formula match {
+    case IsSet(z1) /\ (z2 === y) if z1 == z2 =>
+      val f = SkolemFunction1[FC, Z](z1)
+      isSetIff2(y, f)(axiomT(z1, y, f)(andExtractLeft(andCommutative(thm)))(isSetIff1(z1)(andExtractLeft(thm))))
+  }
 
-  /** x in y -> M(x) */
-  //def inclusionIsSet(x: AnySet, y: AnySet): Theorem = ???
 
 
   /** (x inter y) = (y inter x) */

@@ -4,6 +4,7 @@ trait NBGRules extends NBGTheory {
 
   type FA = "a"
   type FB = "b"
+  type FC = "c"
 
   /** `(x = y) -> (z in x <-> z in y)` */
   def equalsIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[(X === Y) ->: (Member[Z, X] <-> Member[Z, Y])] =
@@ -29,15 +30,19 @@ trait NBGRules extends NBGTheory {
   def subsetStrictIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetStrict[X, Y] <-> (SubsetEqual[X, Y] /\ ~[X === Y])] =
     Theorem((x sub y) <-> ((x sube y) /\ ~(x === y)))
 
-  /** M(x) <-> exists y. x in y */
-  /*def defIsSet[X <: AnySet, Y <: AnySet](x: X, id: Id): Theorem = {
-    val y = SetVariable(id)
-    Theorem(IsSet(x) <-> Exists(y, x in y))
-  }*/
+  /** M(x) -> (x in c(x)) */
+  def isSetIff1[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, SkolemFunction1[FC, X]]] =
+    Theorem(IsSet(x) ->: (x in SkolemFunction1[FC, X](x)))
 
-  /** Pr(x) <-> ~M(x) */
-  /*def defIsClass(x: AnySet): Theorem =
-    Theorem(IsClass(x) <-> ~IsSet(x))*/
+  /** (x in y) -> M(x) */
+  def isSetIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Member[X, Y] ->: IsSet[X]] =
+    Theorem((x in y) ->: IsSet(x))
+
+  // --
+
+  /** (x = y) <-> ((x in z) <-> (y in z)) */
+  def axiomT[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[(X === Y) ->: (Member[X, Z] <-> Member[Y, Z])] =
+    Theorem((x === y) ->: ((x in z) <-> (y in z)))
 
   // --
 

@@ -16,8 +16,7 @@ trait NBGTheory extends FOLTheorems {
   case class SubsetEqual[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
   case class SubsetStrict[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
 
-  case class IsSet(s: AnySet) extends Formula
-  case class IsClass(s: AnySet) extends Formula
+  case class IsSet[A <: AnySet](s: A) extends Formula
 
   case class SingletonSet(s: AnySet) extends Formula
   case class OrderedPair(a: AnySet, b: AnySet) extends Formula
