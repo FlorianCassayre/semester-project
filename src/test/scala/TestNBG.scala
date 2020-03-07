@@ -6,9 +6,10 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
   // Shorthand
   implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
 
-  val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
-  val (x, y, z) = (SetVariable("x"), SetVariable("y"), SetVariable("z"))
-  val id = "w"
+  val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
+  val (x, y, z) = (SetVariable["x"], SetVariable["y"], SetVariable["z"])
+  type W = "w"
+  val id = implicitly[ValueOf[W]].value
   val w = SetVariable(id)
 
   test("equals subset") {

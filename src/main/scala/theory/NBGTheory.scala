@@ -10,7 +10,19 @@ trait NBGTheory extends FOLTheorems {
   }
   case object EmptySet extends AnySet
   type EmptySet = EmptySet.type
-  case class SetVariable(id: Id) extends AnySet with Named
+  class SetVariable[I <: String](override val id: I) extends AnySet with Named {
+    def canEqual(other: Any): Boolean = other.isInstanceOf[SetVariable[_]]
+    override def equals(other: Any): Boolean = other match {
+      case that: SetVariable[_] => (that canEqual this) && id == that.id
+      case _ => false
+    }
+    override def hashCode(): Int = id.hashCode
+    override def toString: Id = s"SetVariable($id)"
+  }
+  object SetVariable {
+    def apply[I <: String](id: I): SetVariable[I] = new SetVariable(id)
+    def apply[I <: String](implicit v: => ValueOf[I]): SetVariable[I] = new SetVariable(v.value)
+  }
 
   case class Member[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
   case class SubsetEqual[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula

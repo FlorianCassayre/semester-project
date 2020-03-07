@@ -15,7 +15,19 @@ trait FOL {
   abstract class Formula {
 
   }
-  case class Variable(id: Id) extends Formula with Named
+  class Variable[I <: String](override val id: I) extends Formula with Named {
+    def canEqual(other: Any): Boolean = other.isInstanceOf[Variable[_]]
+    override def equals(other: Any): Boolean = other match {
+      case that: Variable[_] => (that canEqual this) && id == that.id
+      case _ => false
+    }
+    override def hashCode(): Int = id.hashCode
+    override def toString: Id = s"Variable($id)"
+  }
+  object Variable {
+    def apply[I <: String](v: I): Variable[I] = new Variable(v)
+    def apply[I <: String](implicit v: => ValueOf[I]): Variable[I] = new Variable(v.value)
+  }
   case class Implies[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
   case class Not[P <: Formula](x: P) extends Formula
   case class Iff[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula

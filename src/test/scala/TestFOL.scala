@@ -6,7 +6,7 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
   // Shorthand
   implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
 
-  val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
+  val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
 
   test("illegal escape") {
     var illegal: Theorem[False] = null
