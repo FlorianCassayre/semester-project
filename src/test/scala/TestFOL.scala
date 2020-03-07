@@ -8,6 +8,44 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
 
   val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
 
+  test("illegal escape") {
+    var illegal: Theorem[False] = null
+
+    val legal = hypothesis(False) { f =>
+      illegal = f // Illegal escape
+      f
+    }
+
+    legal.formula // Legal access
+
+    assertThrows[IllegalStateException] {
+      val f = illegal.formula // Trying to access attribute
+    }
+    assertThrows[IllegalStateException] {
+      val str = illegal.toString // toString
+    }
+    assertThrows[IllegalStateException] {
+      val t = hypothesis(False)(identity)
+      t(illegal) // Composition
+    }
+  }
+
+  test("illegal escape nested") {
+    var illegal: Theorem[False] = null
+
+    hypothesis(False) { f1 =>
+      hypothesis(False) { f2 =>
+        illegal = f2
+        f2
+      }
+      f1
+    }
+
+    assertThrows[IllegalStateException] {
+      val f = illegal.formula
+    }
+  }
+
   test("add implies") {
     assert(addImplies(p, q).formula == p ->: q ->: p)
   }

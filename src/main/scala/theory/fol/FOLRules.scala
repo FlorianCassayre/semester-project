@@ -1,13 +1,15 @@
 package theory.fol
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 trait FOLRules extends FOL {
 
   @deprecated
-  def oops[P <: Formula](f: P): Theorem[P] = Theorem(f)
+  def oops[P <: Formula](f: P): Theorem[P] = Theorem(f, dirty = true)
 
   /** `q` given `p -> q` and `p` */
   def modusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q] = pq.formula match {
-    case p1 ->: q if p.formula == p1 => Theorem(q)
+    case p1 ->: q if p.formula == p1 => Theorem(q, Set[Theorem[_]](pq, p))
   }
 
   /** `((p -> false) -> false) -> p` */
@@ -44,8 +46,13 @@ trait FOLRules extends FOL {
 
   /** `p -> q` given `q` in the context of `p` */
   def hypothesis[P <: Formula, Q <: Formula](p: P)(certificate: Theorem[P] => Theorem[Q]): Theorem[P ->: Q] = {
-    val q = certificate(Theorem(p)).formula
-    Theorem(p ->: q)
+    val ref = new AtomicBoolean()
+    val ret = certificate(Theorem(p, dirty = false, Set(ref)))
+    val q = ret.formula
+    val newRefs = ret.context.invalid - ref
+    val dirty = ret.isDirty
+    ref.set(true)
+    Theorem(p ->: q, dirty, newRefs)
   }
 
   // --

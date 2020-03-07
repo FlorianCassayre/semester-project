@@ -1,5 +1,7 @@
 package theory.fol
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 trait FOL {
 
   type Id = String
@@ -48,11 +50,29 @@ trait FOL {
   type /\[P <: Formula, Q <: Formula] = And[P, Q]
   type ===[T <: Theory, S <: Theory] = Equals[T, S]
 
-  final class Theorem[+F <: Formula] private(val formula: F) {
+  class TheoremContext(val invalid: Set[AtomicBoolean], val dirty: Boolean)
+
+  final class Theorem[+F <: Formula] private(f: F, private[fol] val context: TheoremContext) {
+    private def checkState(): Unit = {
+      if(!isValid) {
+        throw new IllegalStateException("Illegal theorem")
+      }
+    }
+    def formula: F = {
+      checkState()
+      f
+    }
+    def isValid: Boolean = context.invalid.forall(!_.get())
+    def isDirty: Boolean = context.dirty
     override def toString: String = formula.toString
   }
   object Theorem {
-    private[theory] def apply[F <: Formula](formula: F): Theorem[F] = new Theorem(formula)
+    private[theory] def apply[F <: Formula](formula: F, dirty: Boolean = false): Theorem[F] = new Theorem(formula, new TheoremContext(Set.empty, dirty))
+    private[theory] def apply[F <: Formula](formula: F, old: Set[Theorem[_]]): Theorem[F] = {
+      old.foreach(_.checkState())
+      new Theorem(formula, new TheoremContext(old.flatMap(_.context.invalid), old.exists(_.context.dirty)))
+    }
+    private[theory] def apply[F <: Formula](formula: F, dirty: Boolean, refs: Set[AtomicBoolean]): Theorem[F] = new Theorem(formula, new TheoremContext(refs, dirty))
   }
 
   // Modus ponens shorthands
