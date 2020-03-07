@@ -65,4 +65,36 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
   test("iff transitive") {
     assert(iffTransitive(p <-> q, q <-> r).formula == p <-> r)
   }
+
+  test("to double negation") {
+    assert(toDoubleNegation(p).formula == (p ->: False) ->: False)
+  }
+
+  test("mixed double negation") {
+    assert(mixedDoubleNegation(p).formula == ~p ->: False)
+  }
+
+  test("not unduplicate") {
+    assert(notUnduplicate(~(~p)).formula == p)
+  }
+
+  test("not duplicate") {
+    assert(notDuplicate(p).formula == ~(~p))
+  }
+
+  test("and duplicate") {
+    assert(andDuplicate(p).formula == p /\ p)
+  }
+
+  test("or unduplicate") {
+    assert(orUnduplicate(p \/ p).formula == p)
+  }
+
+  test("iff add not") {
+    assert(iffAddNot(p <-> q).formula == ~p <-> ~q)
+  }
+
+  test("or duplicate") {
+    assert(orDuplicate(p).formula == p \/ p)
+  }
 }

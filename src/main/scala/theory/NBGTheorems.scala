@@ -48,9 +48,46 @@ trait NBGTheorems extends NBGRules {
       isSetIff2(y, f)(axiomT(z1, y, f)(andExtractLeft(andCommutative(thm)))(isSetIff1(z1)(andExtractLeft(thm))))
   }
 
+  /** M(x) -> M(y) -> ({x, y} = {y, x}) */
+  def pairCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (PairSet[X, Y] === PairSet[Y, X])] = {
+    type F = SkolemFunction2[FA, PairSet[X, Y], PairSet[Y, X]]
+    val (xy, yx) = (PairSet(x, y), PairSet(y, x))
+    val z: F = SkolemFunction2(xy, yx)
 
+    hypothesis(IsSet(z))(sz => hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
+      def implies[A <: AnySet, B <: AnySet](ta: Theorem[IsSet[A]], tb: Theorem[IsSet[B]]): Theorem[Member[F, PairSet[A, B]] ->: Member[F, PairSet[B, A]]] = {
+        val (a, b) = (ta.formula.s, tb.formula.s)
+        val (iff1, iff2) = (axiomP(a, b, z)(ta)(tb)(sz), axiomP(b, a, z)(tb)(ta)(sz))
+        impliesTransitive(
+          impliesTransitive(
+            toImplies(iff1),
+            hypothesis((z === a) \/ (z === b))(orCommutative)
+          ),
+          toImplies(iffCommutative(iff2))
+        )
+      }
 
-  /** (x inter y) = (y inter x) */
+      equalsIff2(xy, yx)(impliesToIffRule(implies(sx, sy), implies(sy, sx)))
+    }))(isSetFa(xy, yx))
+  }
+
+  /** `M(x) -> M(y) -> ((x in {y}) <-> (x = y))` */
+  def singletonEquals[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[X, SingletonSet[Y]] <-> (X === Y))] =
+    hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
+      iffTransitive(
+        equalsIff1(SingletonSet(y), PairSet(y, y), x)(singletonIff(y)),
+        iffTransitive(axiomP(y, y, x)(sy)(sy)(sx), impliesToIffRule(hypothesis((x === y) \/ (x === y))(orUnduplicate), hypothesis(x === y)(orDuplicate)))
+      )
+    })
+
+  /** `M(x) -> M(y) -> ({x} = {y} <-> x = y)` */
+  def singletonCongruence[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: ((SingletonSet[X] === SingletonSet[Y]) <-> (X === Y))] = {
+    hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
+      ??? // TODO
+    })
+  }
+
+  /** `(x inter y) = (y inter x)` */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
     type C = SkolemFunction2[FA, Intersect[X, Y], Intersect[Y, X]]
 

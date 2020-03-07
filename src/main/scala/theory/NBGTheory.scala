@@ -9,8 +9,8 @@ trait NBGTheory extends FOLTheorems {
   sealed abstract class AnySet {
   }
   case object EmptySet extends AnySet
+  type EmptySet = EmptySet.type
   case class SetVariable(id: Id) extends AnySet with Named
-  case class PairSet(a: AnySet, b: AnySet) extends AnySet
 
   case class Member[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
   case class SubsetEqual[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
@@ -18,9 +18,8 @@ trait NBGTheory extends FOLTheorems {
 
   case class IsSet[A <: AnySet](s: A) extends Formula
 
-  case class SingletonSet(s: AnySet) extends Formula
-  case class OrderedPair(a: AnySet, b: AnySet) extends Formula
-  case class SingletonPair(a: AnySet)
+  case class PairSet[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
+  case class SingletonSet[A <: AnySet](a: A) extends AnySet
 
   case class Intersect[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Union[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet

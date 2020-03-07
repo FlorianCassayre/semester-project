@@ -98,4 +98,60 @@ trait FOLTheorems extends FOLRules {
     impliesToIff(p1, q1)(pq)(qp)
   }
 
+  /** `(p -> False) -> False` given `p` */
+  def toDoubleNegation[P <: Formula](tp: Theorem[P]): Theorem[(P ->: False) ->: False] = {
+    val p = tp.formula
+    hypothesis(p ->: False)(pf => pf(tp))
+  }
+
+  /** `~p -> false` given `p` */
+  def mixedDoubleNegation[P <: Formula](thm: Theorem[P]): Theorem[~[P] ->: False] = {
+    val p = thm.formula
+    hypothesis(~p)(np => notIff(p)(np)(thm))
+  }
+
+  /** `p` given `~~p` */
+  def notUnduplicate[P <: Formula](thm: Theorem[~[~[P]]]): Theorem[P] = {
+    val p = thm.formula.x.x
+    doubleNegation(p)(impliesTransitive(hypothesis(p ->: False)(pf => iffCommutative(notIff(p))(pf)), notIff(~p)(thm)))
+  }
+
+  /** `~~p` given `p` */
+  def notDuplicate[P <: Formula](thm: Theorem[P]): Theorem[~[~[P]]] = {
+    val p = thm.formula
+    toImplies(iffCommutative(notIff(~p)))(mixedDoubleNegation(thm))
+  }
+
+  /** `p /\ p` given `p` */
+  def andDuplicate[P <: Formula](thm: Theorem[P]): Theorem[P /\ P] = {
+    val p = thm.formula
+    val and = iffCommutative(andIff(p, p))
+    val add = hypothesis((p ->: False) ->: False)(pff => hypothesis(p ->: p ->: False)(ppf => pff(hypothesis(p)(tp => ppf(tp)(tp)))))
+    impliesTransitive(add, toImplies(and))(toDoubleNegation(thm))
+  }
+
+  /** `p` given `p \/ p` */
+  def orUnduplicate[P <: Formula](thm: Theorem[P \/ P]): Theorem[P] = thm.formula match {
+    case p \/ p1 if p == p1 =>
+      notUnduplicate(iffCommutative(notIff(~p))(impliesTransitive(hypothesis(~p)(andDuplicate), notIff(~p /\ ~p)(orIff(p, p)(thm)))))
+  }
+
+  /** `~p <-> ~q` given `p <-> q` */
+  def iffAddNot[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]): Theorem[~[P] <-> ~[Q]] = {
+    def lemma[A <: Formula, B <: Formula](t: Theorem[A <-> B]): Theorem[~[A] ->: ~[B]] = t.formula match {
+      case a <-> b => hypothesis(~a)(na => iffCommutative(notIff(b))(impliesTransitive(toImplies(iffCommutative(t)), notIff(a)(na))))
+    }
+    impliesToIffRule(lemma(thm), lemma(iffCommutative(thm)))
+  }
+
+  /** `p \/ q` given `p` */ // Note: this a weaker version of the (unproven) general theorem `orAddRight`
+  def orDuplicate[P <: Formula](thm: Theorem[P]): Theorem[P \/ P] = {
+    val p = thm.formula
+    iffCommutative(orIff(p, p))(
+      iffAddNot(iffCommutative(andIff(~p, ~p)))(
+        iffCommutative(notIff((~p ->: ~p ->: False) ->: False))(toDoubleNegation(addAssumption(~p, mixedDoubleNegation(thm))))
+      )
+    )
+  }
+
 }

@@ -31,6 +31,18 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(equalsIsSet(IsSet(z) /\ (z === y)).formula == IsSet(y))
   }
 
+  test("pair commutative") {
+    assert(pairCommutative(x, y).formula == (IsSet(x) ->: IsSet(y) ->: (PairSet(x, y) === PairSet(y, x))))
+  }
+
+  test("singleton equals") {
+    assert(singletonEquals(x, y).formula == IsSet(x) ->: IsSet(y) ->: ((x in SingletonSet(y)) <-> (x === y)))
+  }
+
+  /*test("singleton congruence") {
+    assert(singletonCongruence(x, y).formula == (IsSet(x) ->: IsSet(y) ->: ((SingletonSet(x) === SingletonSet(y)) <-> (x === y))))
+  }*/
+
   test("intersect commutative") {
     assert(intersectCommutative(x, y).formula == ((x inter y) === (y inter x)))
   }
