@@ -28,6 +28,10 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(equalsTransitive(x === y, y === z).formula == (x === z))
   }
 
+  test("equals symmetric iff") {
+    assert(equalsSymmetricIff(x, y).formula == (x === y) <-> (y === x))
+  }
+
   test("equals is set") {
     assert(equalsIsSet(IsSet(z) /\ (z === y)).formula == IsSet(y))
   }
@@ -40,9 +44,13 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(singletonEquals(x, y).formula == IsSet(x) ->: IsSet(y) ->: ((x in SingletonSet(y)) <-> (x === y)))
   }
 
-  /*test("singleton congruence") {
+  test("singleton membership commutative") {
+    assert(singletonMembershipCommutative(x, y).formula == IsSet(x) ->: IsSet(y) ->: ((x in SingletonSet(y)) <-> (y in SingletonSet(x))))
+  }
+
+  test("singleton congruence") {
     assert(singletonCongruence(x, y).formula == (IsSet(x) ->: IsSet(y) ->: ((SingletonSet(x) === SingletonSet(y)) <-> (x === y))))
-  }*/
+  }
 
   test("intersect commutative") {
     assert(intersectCommutative(x, y).formula == ((x inter y) === (y inter x)))

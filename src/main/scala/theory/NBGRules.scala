@@ -46,7 +46,7 @@ trait NBGRules extends NBGTheory {
 
   // --
 
-  /** `(x = y) <-> ((x in z) <-> (y in z))` */
+  /** `(x = y) -> ((x in z) <-> (y in z))` */
   def axiomT[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[(X === Y) ->: (Member[X, Z] <-> Member[Y, Z])] =
     Theorem((x === y) ->: ((x in z) <-> (y in z)))
 

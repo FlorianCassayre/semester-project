@@ -120,10 +120,6 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(notDuplicate(p).formula == ~(~p))
   }
 
-  test("and duplicate") {
-    assert(andDuplicate(p).formula == p /\ p)
-  }
-
   test("or unduplicate") {
     assert(orUnduplicate(p \/ p).formula == p)
   }

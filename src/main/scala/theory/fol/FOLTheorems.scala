@@ -122,18 +122,10 @@ trait FOLTheorems extends FOLRules {
     toImplies(iffCommutative(notIff(~p)))(mixedDoubleNegation(thm))
   }
 
-  /** `p /\ p` given `p` */
-  def andDuplicate[P <: Formula](thm: Theorem[P]): Theorem[P /\ P] = {
-    val p = thm.formula
-    val and = iffCommutative(andIff(p, p))
-    val add = hypothesis((p ->: False) ->: False)(pff => hypothesis(p ->: p ->: False)(ppf => pff(hypothesis(p)(tp => ppf(tp)(tp)))))
-    impliesTransitive(add, toImplies(and))(toDoubleNegation(thm))
-  }
-
   /** `p` given `p \/ p` */
   def orUnduplicate[P <: Formula](thm: Theorem[P \/ P]): Theorem[P] = thm.formula match {
     case p \/ p1 if p == p1 =>
-      notUnduplicate(iffCommutative(notIff(~p))(impliesTransitive(hypothesis(~p)(andDuplicate), notIff(~p /\ ~p)(orIff(p, p)(thm)))))
+      notUnduplicate(iffCommutative(notIff(~p))(impliesTransitive(hypothesis(~p)(h => andCombine(h, h)), notIff(~p /\ ~p)(orIff(p, p)(thm)))))
   }
 
   /** `~p <-> ~q` given `p <-> q` */

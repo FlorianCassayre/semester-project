@@ -41,6 +41,10 @@ trait NBGTheorems extends NBGRules {
       equalsIff2(x, z)(iffTransitive(andExtractLeft(and), andExtractLeft(andCommutative(and))))
   }
 
+  /** `x = y <-> y = x` */
+  def equalsSymmetricIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (Y === X)] =
+    impliesToIffRule(hypothesis(x === y)(equalsSymmetric), hypothesis(y === x)(equalsSymmetric))
+
   /** `M(Y)` given `(M(Z) /\ (Z = Y))` */
   def equalsIsSet[Y <: AnySet, Z <: AnySet](thm: Theorem[IsSet[Z] /\ (Z === Y)]): Theorem[IsSet[Y]] = thm.formula match {
     case IsSet(z1) /\ (z2 === y) if z1 == z2 =>
@@ -80,10 +84,39 @@ trait NBGTheorems extends NBGRules {
       )
     })
 
+  /** `M(x) -> M(y) -> ((x in {y}) <-> (y in {x}))` */
+  def singletonMembershipCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[X, SingletonSet[Y]] <-> Member[Y, SingletonSet[X]])] =
+    hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
+      iffTransitive(iffTransitive(singletonEquals(x, y)(sx)(sy), equalsSymmetricIff(x, y)), iffCommutative(singletonEquals(y, x)(sy)(sx)))
+    })
+
   /** `M(x) -> M(y) -> ({x} = {y} <-> x = y)` */
   def singletonCongruence[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: ((SingletonSet[X] === SingletonSet[Y]) <-> (X === Y))] = {
     hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
-      ??? // TODO
+
+      val to = hypothesis(SingletonSet(x) === SingletonSet(y)) { xy =>
+        iffTransitive(
+          iffTransitive(
+            iffCommutative(singletonEquals(x, x)(sx)(sx)),
+            equalsIff1(SingletonSet(x), SingletonSet(y), x)(xy)
+          ),
+          singletonEquals(x, y)(sx)(sy)
+        )(equalsReflexive(x))
+      }
+
+      val from = hypothesis(x === y) { xy =>
+        val f = SkolemFunction2[FA, SingletonSet[X], SingletonSet[Y]](SingletonSet(x), SingletonSet(y))
+        val setFa = isSetFa(SingletonSet(x), SingletonSet(y))
+        equalsIff2(SingletonSet(x), SingletonSet(y))(iffTransitive(
+          iffTransitive(
+            singletonMembershipCommutative(f, x)(setFa)(sx),
+            axiomT(x, y, SingletonSet(f))(xy)
+          ),
+          singletonMembershipCommutative(y, f)(sy)(setFa)
+        ))
+      }
+
+      impliesToIffRule(to, from)
     })
   }
 
