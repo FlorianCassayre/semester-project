@@ -136,14 +136,37 @@ trait FOLTheorems extends FOLRules {
     impliesToIffRule(lemma(thm), lemma(iffCommutative(thm)))
   }
 
-  /** `p \/ q` given `p` */ // Note: this a weaker version of the (unproven) general theorem `orAddRight`
-  def orDuplicate[P <: Formula](thm: Theorem[P]): Theorem[P \/ P] = {
+  /** `p \/ q` given `p` */
+  def orAddRight[P <: Formula, Q <: Formula](thm: Theorem[P], q: Q): Theorem[P \/ Q] = {
     val p = thm.formula
-    iffCommutative(orIff(p, p))(
-      iffAddNot(iffCommutative(andIff(~p, ~p)))(
-        iffCommutative(notIff((~p ->: ~p ->: False) ->: False))(toDoubleNegation(addAssumption(~p, mixedDoubleNegation(thm))))
+    iffCommutative(orIff(p, q))(
+      iffAddNot(iffCommutative(andIff(~p, ~q)))(
+        iffCommutative(notIff((~p ->: ~q ->: False) ->: False))(
+          toDoubleNegation(swapAssumptions(addAssumption(~q, mixedDoubleNegation(thm))))
+        )
       )
     )
+  }
+
+  /** `(q -> r) => (p -> r)` given `p => q`. */
+  def addConclusion[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P ->: Q], r: R): Theorem[(Q ->: R) ->: (P ->: R)] = pq.formula match {
+    case p ->: q => hypothesis(q ->: r)(qr => impliesTransitive(pq, qr))
+  }
+
+  /** `~q -> ~p` given `p -> q` */
+  def impliesInverse[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q]): Theorem[~[Q] ->: ~[P]] = pq.formula match {
+    case p ->: q =>
+      impliesTransitive(impliesTransitive(toImplies(notIff(q)), addConclusion(pq, False)), toImplies(iffCommutative(notIff(p))))
+  }
+
+  /** `r` given `p \/ q`, `p -> r` and `q -> r` */
+  def orCase[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P \/ Q], pr: Theorem[P ->: R], qr: Theorem[Q ->: R]): Theorem[R] =
+    (pq.formula, pr.formula, qr.formula) match {
+    case (p \/ q, p1 ->: r, q1 ->: r1) if p == p1 && r == r1 && q == q1 =>
+      doubleNegation(r)(impliesTransitive(
+        toImplies(iffCommutative(notIff(r))),
+        hypothesis(~r)(nr => hypothesis(~p)(np => hypothesis(~q)(nq => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq))))(impliesInverse(pr)(nr))(impliesInverse(qr)(nr)))
+      ))
   }
 
 }

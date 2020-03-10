@@ -128,7 +128,19 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(iffAddNot(p <-> q).formula == ~p <-> ~q)
   }
 
-  test("or duplicate") {
-    assert(orDuplicate(p).formula == p \/ p)
+  test("or add right") {
+    assert(orAddRight(p, q).formula == p \/ q)
+  }
+
+  test("add conclusion") {
+    assert(addConclusion(p ->: q, r).formula == (q ->: r) ->: (p ->: r))
+  }
+
+  test("implies inverse") {
+    assert(impliesInverse(p ->: q).formula == ~q ->: ~p)
+  }
+
+  test("or case") {
+    assert(orCase(p \/ q, p ->: r, q ->: r).formula == r)
   }
 }

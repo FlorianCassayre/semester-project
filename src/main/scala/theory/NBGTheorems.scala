@@ -79,8 +79,8 @@ trait NBGTheorems extends NBGRules {
   def singletonEquals[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[X, SingletonSet[Y]] <-> (X === Y))] =
     hypothesis(IsSet(x))(sx => hypothesis(IsSet(y)) { sy =>
       iffTransitive(
-        equalsIff1(SingletonSet(y), PairSet(y, y), x)(singletonIff(y)),
-        iffTransitive(axiomP(y, y, x)(sy)(sy)(sx), impliesToIffRule(hypothesis((x === y) \/ (x === y))(orUnduplicate), hypothesis(x === y)(orDuplicate)))
+        equalsIff1(SingletonSet(y), PairSet(y, y), x)(singletonEq(y)),
+        iffTransitive(axiomP(y, y, x)(sy)(sy)(sx), impliesToIffRule(hypothesis((x === y) \/ (x === y))(orUnduplicate), hypothesis(x === y)(t => orAddRight(t, t.formula))))
       )
     })
 
