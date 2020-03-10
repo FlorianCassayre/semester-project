@@ -40,8 +40,8 @@ trait NBGRules extends NBGTheory {
   def isSetIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Member[X, Y] ->: IsSet[X]] =
     Theorem((x in y) ->: IsSet(x))
 
-  /** {x} = {x, x} */
-  def singletonIff[X <: AnySet](x: X): Theorem[SingletonSet[X] === PairSet[X, X]] =
+  /** `{x} = {x, x}` */
+  def singletonEq[X <: AnySet](x: X): Theorem[SingletonSet[X] === PairSet[X, X]] =
     Theorem(SingletonSet(x) === PairSet(x, x))
 
   // --
