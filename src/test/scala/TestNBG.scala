@@ -7,7 +7,7 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
   implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
 
   val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
-  val (x, y, z) = (SetVariable["x"], SetVariable["y"], SetVariable["z"])
+  val (x, y, z, u, v) = (SetVariable["x"], SetVariable["y"], SetVariable["z"], SetVariable["u"], SetVariable["v"])
   type W = "w"
   val id = implicitly[ValueOf[W]].value
   val w = SetVariable(id)
@@ -54,6 +54,10 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
 
   test("intersect commutative") {
     assert(intersectCommutative(x, y).formula == ((x inter y) === (y inter x)))
+  }
+
+  test("ordered pair to equals") {
+    assert(orderedPairToEquals(x, y, u, v).formula == IsSet(x) ->: IsSet(y) ->: IsSet(u) ->: IsSet(v) ->: (OrderedPair(x, y) === OrderedPair(u, v)) ->: ((x === u) /\ (y === v)))
   }
 
 }

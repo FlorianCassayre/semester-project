@@ -16,33 +16,37 @@ trait NBGRules extends NBGTheory {
     Theorem(((a in x) <-> (a in y)) ->: (x === y))
   }
 
-  /** (x sube y) -> (z in x -> z in y) */
+  /** `(x sube y) -> (z in x -> z in y)` */
   def subsetEqIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[SubsetEqual[X, Y] ->: (Member[Z, X] ->: Member[Z, Y])] =
     Theorem((x sube y) ->: ((z in x) ->: (z in y)))
 
   type FB = "b"
-  /** (b(x, y) in x -> b(x, y) in y) -> (x sube y) */
+  /** `(b(x, y) in x -> b(x, y) in y) -> (x sube y)` */
   def subsetEqIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(Member[SkolemFunction2[FB, X, Y], X] ->: Member[SkolemFunction2[FB, X, Y], Y]) ->: SubsetEqual[X, Y]] = {
     val b = SkolemFunction2[FB, X, Y](x, y)
     Theorem(((b in x) ->: (b in y)) ->: (x sube y))
   }
 
-  /** (x sub y) <-> (x sube y /\ x != y) */
+  /** `(x sub y) <-> (x sube y /\ x != y)` */
   def subsetStrictIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetStrict[X, Y] <-> (SubsetEqual[X, Y] /\ ~[X === Y])] =
     Theorem((x sub y) <-> ((x sube y) /\ ~(x === y)))
 
   type FC = "c"
-  /** M(x) -> (x in c(x)) */
+  /** `M(x) -> (x in c(x))` */
   def isSetIff1[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, SkolemFunction1[FC, X]]] =
     Theorem(IsSet(x) ->: (x in SkolemFunction1[FC, X](x)))
 
-  /** (x in y) -> M(x) */
+  /** `(x in y) -> M(x)` */
   def isSetIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Member[X, Y] ->: IsSet[X]] =
     Theorem((x in y) ->: IsSet(x))
 
   /** `{x} = {x, x}` */
   def singletonEq[X <: AnySet](x: X): Theorem[SingletonSet[X] === PairSet[X, X]] =
     Theorem(SingletonSet(x) === PairSet(x, x))
+
+  /** `<x, y> = {{x}, {x, y}}` */
+  def orderedPairEq[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[OrderedPair[X, Y] === PairSet[SingletonSet[X], PairSet[X, Y]]] =
+    Theorem(OrderedPair(x, y) === PairSet(SingletonSet(x), PairSet(x, y)))
 
   // --
 

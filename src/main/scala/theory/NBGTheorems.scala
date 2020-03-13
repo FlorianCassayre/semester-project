@@ -120,6 +120,122 @@ trait NBGTheorems extends NBGRules {
     })
   }
 
+  /** `M({x, y})` given `M(x)` and `M(y)` */
+  def pairIsSet[X <: AnySet, Y <: AnySet](tx: Theorem[IsSet[X]], ty: Theorem[IsSet[Y]]): Theorem[IsSet[PairSet[X, Y]]] = {
+    val (x, y) = (tx.formula.s, ty.formula.s)
+
+    oops(IsSet(PairSet(x, y))) // TODO
+  }
+
+  /** `M({x})` given `M(x)` */
+  def singletonIsSet[X <: AnySet](thm: Theorem[IsSet[X]]): Theorem[IsSet[SingletonSet[X]]] = thm.formula match {
+    case IsSet(x) => equalsIsSet(andCombine(pairIsSet(thm, thm), equalsSymmetric(singletonEq(x))))
+  }
+
+  /** `M(x) -> M(y) -> M(z) -> {z} = {x, y} -> z = x` */
+  def singletonPairEqualLeft[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z):
+  Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: (SingletonSet[Z] === PairSet[X, Y]) ->: (Z === X)] =
+    hypothesis(IsSet(x))(su => hypothesis(IsSet(y))(sv => hypothesis(IsSet(z))(sx => hypothesis(SingletonSet(z) === PairSet(x, y)) { hyp =>
+      equalsSymmetric(iffTransitive(
+        iffCommutative(axiomP(x, y, x)(su)(sv)(su)),
+        iffTransitive(
+          iffCommutative(equalsIff1(SingletonSet(z), PairSet(x, y), x)(hyp)),
+          singletonEquals(x, z)(su)(sx)
+        )
+      )(orAddRight(equalsReflexive(x), x === y)))
+    })))
+
+  /** `M(x) -> M(y) -> M(u) -> M(v) -> {x, y} = {u, v} -> (x = u /\ y = v)` */
+  def orderedPairToEquals[X <: AnySet, Y <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, u: U, v: V):
+  Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[U] ->: IsSet[V] ->: (OrderedPair[X, Y] === OrderedPair[U, V]) ->: ((X === U) /\ (Y === V))] = {
+    hypothesis(IsSet(x))(sx => hypothesis(IsSet(y))(sy => hypothesis(IsSet(u))(su => hypothesis(IsSet(v)) { sv =>
+      hypothesis(OrderedPair(x, y) === OrderedPair(u, v)) { xyuv =>
+        val (ssx, ssu, suv, sxy) = (singletonIsSet(sx), singletonIsSet(su), pairIsSet(su, sv), pairIsSet(sx, sy))
+        val (sX, sU) = (SingletonSet(x), SingletonSet(u))
+        val (pXY, pUV) = (PairSet(x, y), PairSet(u, v))
+
+        val assumption = equalsTransitive(equalsTransitive(equalsSymmetric(orderedPairEq(x, y)), xyuv), orderedPairEq(u, v))
+
+        // Left conclusion
+        val xEu: Theorem[X === U] = orCase(
+          axiomP(sU, pUV, sX)(ssu)(suv)(ssx)(
+            equalsIff1(PairSet(sX, pXY), PairSet(sU, pUV), sX)(assumption)(
+              iffCommutative(axiomP(sX, pXY, sX)(ssx)(sxy)(ssx))(
+                orAddRight(equalsReflexive(sX), sX === pXY)
+              )
+            )
+          ),
+          hypothesis(sX === sU)(singletonCongruence(x, u)(sx)(su).apply),
+          singletonPairEqualLeft(u, v, x)(su)(sv)(sx)
+        )
+
+        // Right conclusion
+        val yEv: Theorem[Y === V] = mixedDoubleNegationInvert(hypothesis(~(y === v)) { yv =>
+          val or = hypothesis(~(x === v) \/ ~(y === u)) { hyp =>
+            val xv: Theorem[(~[X === V]) ->: False] = hypothesis(~(x === v)) { hyp =>
+              val lemma = impliesTransitive(impliesInverse(hypothesis(pUV === sX)(hyp =>
+                singletonPairEqualLeft(v, u, x)(sv)(su)(sx)(equalsTransitive(equalsSymmetric(hyp), pairCommutative(u, v)(su)(sv)))
+              )), orImplies(axiomP(sX, pXY, pUV)(ssx)(sxy)(suv)(
+                equalsIff1(PairSet(sU, pUV), PairSet(sX, pXY), pUV)(
+                  equalsSymmetric(assumption))(iffCommutative(axiomP(sU, pUV, pUV)(ssu)(suv)(suv))(
+                  orCommutative(orAddRight(equalsReflexive(pUV), pUV === sU))
+                ))))
+              )
+
+              val vxOvy = axiomP(x, y, v)(sx)(sy)(sv)(
+                equalsIff1(pUV, pXY, v)(mixedDoubleNegationInvert(lemma(hyp)))(
+                  iffCommutative(axiomP(u, v, v)(su)(sv)(sv))(orCommutative(orAddRight(equalsReflexive(v), v === u)))
+                )
+              )
+              mixedDoubleNegation(equalsSymmetric(mixedDoubleNegationInvert(orImplies(vxOvy)(
+                iffCommutative(notIff(v === x))(impliesTransitive(hypothesis(v === x)(equalsSymmetric), notIff(x === v)(hyp)))
+              ))))(yv)
+            }
+
+            val yu: Theorem[~[Y === U] ->: False] = hypothesis(~(y === u)) { hyp =>
+              val lemma = impliesTransitive(
+                impliesInverse(hypothesis(pXY === sU)(hyp =>
+                  equalsSymmetric(singletonPairEqualLeft(y, x, u)(sy)(sx)(su)(equalsTransitive(equalsSymmetric(hyp), pairCommutative(x, y)(sx)(sy))))
+                )), orImplies(axiomP(sU, pUV, pXY)(ssu)(suv)(sxy)(
+                  equalsIff1(PairSet(sX, pXY), PairSet(sU, pUV), pXY)(assumption)(
+                    iffCommutative(axiomP(sX, pXY, pXY)(ssx)(sxy)(sxy))(
+                      orCommutative(orAddRight(equalsReflexive(pXY), pXY === sX))
+                    )
+                  )
+                )))
+              val yuOyv = axiomP(u, v, y)(su)(sv)(sy)(
+                iffCommutative(equalsIff1(pUV, pXY, y)(equalsSymmetric(mixedDoubleNegationInvert(lemma(hyp)))))(
+                  iffCommutative(axiomP(x, y, y)(sx)(sy)(sy))(orCommutative(orAddRight(equalsReflexive(y), y === x)))
+                )
+              )
+              notIff(y === v)(yv)(mixedDoubleNegationInvert(orImplies(yuOyv)(hyp)))
+            }
+
+            orCase(hyp, xv, yu)
+          }
+
+          notIff(y === v)(yv)(
+            equalsTransitive(
+              equalsTransitive(
+                notUnduplicate(andExtractLeft(andCommutative(
+                  notUnduplicate(impliesInverse(toImplies(iffCommutative(orIff(~(x === v), ~(y === u)))))(
+                    iffCommutative(notIff(~(x === v) \/ ~(y === u)))(or)
+                  ))
+                ))),
+                equalsSymmetric(xEu)), notUnduplicate(andExtractLeft(
+                notUnduplicate(impliesInverse(toImplies(iffCommutative(orIff(~(x === v), ~(y === u)))))(
+                  iffCommutative(notIff(~(x === v) \/ ~(y === u)))(or)
+                ))
+              ))
+            )
+          )
+        })
+
+        andCombine(xEu, yEv)
+      }
+    })))
+  }
+
   /** `(x inter y) = (y inter x)` */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
     type C = SkolemFunction2[FA, Intersect[X, Y], Intersect[Y, X]]

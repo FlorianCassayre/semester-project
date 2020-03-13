@@ -33,6 +33,8 @@ trait NBGTheory extends FOLTheorems {
   case class PairSet[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class SingletonSet[A <: AnySet](a: A) extends AnySet
 
+  case class OrderedPair[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
+
   case class Intersect[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Union[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Difference[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet

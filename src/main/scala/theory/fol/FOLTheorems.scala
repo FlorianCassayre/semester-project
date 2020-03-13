@@ -110,6 +110,12 @@ trait FOLTheorems extends FOLRules {
     hypothesis(~p)(np => notIff(p)(np)(thm))
   }
 
+  /** `p` given `~p -> false` */
+  def mixedDoubleNegationInvert[P <: Formula](thm: Theorem[~[P] ->: False]): Theorem[P] = {
+    val p = thm.formula.x.x
+    notUnduplicate(iffCommutative(notIff(~p))(thm))
+  }
+
   /** `p` given `~~p` */
   def notUnduplicate[P <: Formula](thm: Theorem[~[~[P]]]): Theorem[P] = {
     val p = thm.formula.x.x
@@ -159,13 +165,18 @@ trait FOLTheorems extends FOLRules {
       impliesTransitive(impliesTransitive(toImplies(notIff(q)), addConclusion(pq, False)), toImplies(iffCommutative(notIff(p))))
   }
 
+  /** `~p -> ~q -> false` given `p \/ q` */
+  def orImplies[P <: Formula, Q <: Formula](pq: Theorem[P \/ Q]): Theorem[~[P] ->: ~[Q] ->: False] = pq.formula match {
+    case p \/ q => hypothesis(~p)(np => hypothesis(~q)(nq => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq))))
+  }
+
   /** `r` given `p \/ q`, `p -> r` and `q -> r` */
   def orCase[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P \/ Q], pr: Theorem[P ->: R], qr: Theorem[Q ->: R]): Theorem[R] =
     (pq.formula, pr.formula, qr.formula) match {
     case (p \/ q, p1 ->: r, q1 ->: r1) if p == p1 && r == r1 && q == q1 =>
       doubleNegation(r)(impliesTransitive(
         toImplies(iffCommutative(notIff(r))),
-        hypothesis(~r)(nr => hypothesis(~p)(np => hypothesis(~q)(nq => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq))))(impliesInverse(pr)(nr))(impliesInverse(qr)(nr)))
+        hypothesis(~r)(nr => orImplies(pq)(impliesInverse(pr)(nr))(impliesInverse(qr)(nr)))
       ))
   }
 
