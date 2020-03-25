@@ -3,11 +3,11 @@ package theory.fol
 trait FOLTheorems extends FOLRules {
 
   /** `p -> q -> p` */
-  def addImplies[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[P ->: Q ->: P] = hypothesis(p)(tp => hypothesis(q)(_ => tp))
+  def addImplies[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[P ->: Q ->: P] = assume(p)(tp => assume(q)(_ => tp))
 
   /** `(p -> q -> r) -> (p -> q) -> (p -> r)` */
   def impliesDistribute[P <: Formula, Q <: Formula, R <: Formula](p: P, q: Q, r: R): Theorem[(P ->: Q ->: R) ->: (P ->: Q) ->: (P ->: R)] =
-    hypothesis(p ->: q ->: r)(pqr => hypothesis(p ->: q)(pq => hypothesis(p)(tp => pqr(tp)(pq(tp)))))
+    assume(p ->: q ->: r)(pqr => assume(p ->: q)(pq => assume(p)(tp => pqr(tp)(pq(tp)))))
 
   /** `p -> q` given `p <-> q` */
   def toImplies[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q]): Theorem[P ->: Q] = {
@@ -51,7 +51,7 @@ trait FOLTheorems extends FOLRules {
   /** `(q /\ p)` given `(p /\ q)` */
   def andCommutative[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[Q /\ P] = thm.formula match {
     case p /\ q =>
-      iffCommutative(andIff(q, p))(hypothesis(q ->: p ->: False) { qpf =>
+      iffCommutative(andIff(q, p))(assume(q ->: p ->: False) { qpf =>
         andIff(p, q)(thm)(swapAssumptions(qpf))
       })
   }
@@ -59,22 +59,22 @@ trait FOLTheorems extends FOLRules {
   /** `(q \/ p)` given `(p \/ q)` */
   def orCommutative[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]): Theorem[Q \/ P] = thm.formula match {
     case p \/ q =>
-      iffCommutative(orIff(q, p))(iffCommutative(notIff(~q /\ ~p))(hypothesis(~q /\ ~p) { hyp =>
+      iffCommutative(orIff(q, p))(iffCommutative(notIff(~q /\ ~p))(assume(~q /\ ~p) { hyp =>
         notIff(~p /\ ~q)(orIff(p, q)(thm))(andCommutative(hyp))
       }))
   }
 
   /** `p <-> p` */
   def iffReflexive[P <: Formula](p: P): Theorem[P <-> P] = {
-    val pp = hypothesis(p)(identity)
+    val pp = assume(p)(identity)
     impliesToIff(p, p)(pp)(pp)
   }
 
   /** `p` given `p /\ q` */
   def andExtractLeft[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[P] = thm.formula match {
     case p /\ q =>
-      doubleNegation(p)(hypothesis(p ->: False)(pf =>
-        andIff(p, q)(thm)(hypothesis(p)(tp =>
+      doubleNegation(p)(assume(p ->: False)(pf =>
+        andIff(p, q)(thm)(assume(p)(tp =>
           addAssumption(q, pf(tp))
         ))
       ))
@@ -83,7 +83,7 @@ trait FOLTheorems extends FOLRules {
   /** `p /\ q` given `p` and `q` */
   def andCombine[P <: Formula, Q <: Formula](tp: Theorem[P], tq: Theorem[Q]): Theorem[P /\ Q] = {
     val (p, q) = (tp.formula, tq.formula)
-    iffCommutative(andIff(p, q))(hypothesis(p ->: q ->: False)(pqf => pqf(tp)(tq)))
+    iffCommutative(andIff(p, q))(assume(p ->: q ->: False)(pqf => pqf(tp)(tq)))
   }
 
   /** `p <-> r` given `p <-> q` and `q <-> r` */
@@ -101,13 +101,13 @@ trait FOLTheorems extends FOLRules {
   /** `(p -> False) -> False` given `p` */
   def toDoubleNegation[P <: Formula](tp: Theorem[P]): Theorem[(P ->: False) ->: False] = {
     val p = tp.formula
-    hypothesis(p ->: False)(pf => pf(tp))
+    assume(p ->: False)(pf => pf(tp))
   }
 
   /** `~p -> false` given `p` */
   def mixedDoubleNegation[P <: Formula](thm: Theorem[P]): Theorem[~[P] ->: False] = {
     val p = thm.formula
-    hypothesis(~p)(np => notIff(p)(np)(thm))
+    assume(~p)(np => notIff(p)(np)(thm))
   }
 
   /** `p` given `~p -> false` */
@@ -119,7 +119,7 @@ trait FOLTheorems extends FOLRules {
   /** `p` given `~~p` */
   def notUnduplicate[P <: Formula](thm: Theorem[~[~[P]]]): Theorem[P] = {
     val p = thm.formula.x.x
-    doubleNegation(p)(impliesTransitive(hypothesis(p ->: False)(pf => iffCommutative(notIff(p))(pf)), notIff(~p)(thm)))
+    doubleNegation(p)(impliesTransitive(assume(p ->: False)(pf => iffCommutative(notIff(p))(pf)), notIff(~p)(thm)))
   }
 
   /** `~~p` given `p` */
@@ -131,13 +131,13 @@ trait FOLTheorems extends FOLRules {
   /** `p` given `p \/ p` */
   def orUnduplicate[P <: Formula](thm: Theorem[P \/ P]): Theorem[P] = thm.formula match {
     case p \/ p1 if p == p1 =>
-      notUnduplicate(iffCommutative(notIff(~p))(impliesTransitive(hypothesis(~p)(h => andCombine(h, h)), notIff(~p /\ ~p)(orIff(p, p)(thm)))))
+      notUnduplicate(iffCommutative(notIff(~p))(impliesTransitive(assume(~p)(h => andCombine(h, h)), notIff(~p /\ ~p)(orIff(p, p)(thm)))))
   }
 
   /** `~p <-> ~q` given `p <-> q` */
   def iffAddNot[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]): Theorem[~[P] <-> ~[Q]] = {
     def lemma[A <: Formula, B <: Formula](t: Theorem[A <-> B]): Theorem[~[A] ->: ~[B]] = t.formula match {
-      case a <-> b => hypothesis(~a)(na => iffCommutative(notIff(b))(impliesTransitive(toImplies(iffCommutative(t)), notIff(a)(na))))
+      case a <-> b => assume(~a)(na => iffCommutative(notIff(b))(impliesTransitive(toImplies(iffCommutative(t)), notIff(a)(na))))
     }
     impliesToIffRule(lemma(thm), lemma(iffCommutative(thm)))
   }
@@ -156,7 +156,7 @@ trait FOLTheorems extends FOLRules {
 
   /** `(q -> r) => (p -> r)` given `p => q`. */
   def addConclusion[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P ->: Q], r: R): Theorem[(Q ->: R) ->: (P ->: R)] = pq.formula match {
-    case p ->: q => hypothesis(q ->: r)(qr => impliesTransitive(pq, qr))
+    case p ->: q => assume(q ->: r)(qr => impliesTransitive(pq, qr))
   }
 
   /** `~q -> ~p` given `p -> q` */
@@ -167,7 +167,8 @@ trait FOLTheorems extends FOLRules {
 
   /** `~p -> ~q -> false` given `p \/ q` */
   def orImplies[P <: Formula, Q <: Formula](pq: Theorem[P \/ Q]): Theorem[~[P] ->: ~[Q] ->: False] = pq.formula match {
-    case p \/ q => hypothesis(~p)(np => hypothesis(~q)(nq => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq))))
+    case p \/ q =>
+      assume(~p, ~q)((np, nq) => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq)))
   }
 
   /** `r` given `p \/ q`, `p -> r` and `q -> r` */
@@ -176,8 +177,25 @@ trait FOLTheorems extends FOLRules {
     case (p \/ q, p1 ->: r, q1 ->: r1) if p == p1 && r == r1 && q == q1 =>
       doubleNegation(r)(impliesTransitive(
         toImplies(iffCommutative(notIff(r))),
-        hypothesis(~r)(nr => orImplies(pq)(impliesInverse(pr)(nr))(impliesInverse(qr)(nr)))
+        assume(~r)(nr => orImplies(pq)(impliesInverse(pr)(nr))(impliesInverse(qr)(nr)))
       ))
   }
+
+  // --
+
+  def assume[P1 <: Formula, P2 <: Formula, Q <: Formula](p1: P1, p2: P2)(certificate: (Theorem[P1], Theorem[P2]) => Theorem[Q]): Theorem[P1 ->: P2 ->: Q] =
+    assume(p1)(t1 => assume(p2)(t2 => certificate(t1, t2)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: Q] =
+    assume(p1, p2)((t1, t2) => assume(p3)(t3 => certificate(t1, t2, t3)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: Q] =
+    assume(p1, p2, p3)((t1, t2, t3) => assume(p4)(t4 => certificate(t1, t2, t3, t4)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: Q] =
+    assume(p1, p2, p3, p4)((t1, t2, t3, t4) => assume(p5)(t5 => certificate(t1, t2, t3, t4, t5)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, P6 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5], Theorem[P6]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: P6 ->: Q] =
+    assume(p1, p2, p3, p4, p5)((t1, t2, t3, t4, t5) => assume(p6)(t6 => certificate(t1, t2, t3, t4, t5, t6)))
 
 }

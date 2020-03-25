@@ -45,7 +45,7 @@ trait FOLRules extends FOL {
   // --
 
   /** `p -> q` given `q` in the context of `p` */
-  def hypothesis[P <: Formula, Q <: Formula](p: P)(certificate: Theorem[P] => Theorem[Q]): Theorem[P ->: Q] = {
+  def assume[P <: Formula, Q <: Formula](p: P)(certificate: Theorem[P] => Theorem[Q]): Theorem[P ->: Q] = {
     val ref = new AtomicBoolean()
     val ret = certificate(Axiom(p, dirty = false, Set(ref)))
     val q = ret.formula

@@ -11,7 +11,7 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
   test("illegal escape") {
     var illegal: Theorem[False] = null
 
-    val legal = hypothesis(False) { f =>
+    val legal = assume(False) { f =>
       illegal = f // Illegal escape
       f
     }
@@ -25,7 +25,7 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
       val str = illegal.toString // toString
     }
     assertThrows[IllegalStateException] {
-      val t = hypothesis(False)(identity)
+      val t = assume(False)(identity)
       t(illegal) // Composition
     }
   }
@@ -33,8 +33,8 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
   test("illegal escape nested") {
     var illegal: Theorem[False] = null
 
-    hypothesis(False) { f1 =>
-      hypothesis(False) { f2 =>
+    assume(False) { f1 =>
+      assume(False) { f2 =>
         illegal = f2
         f2
       }
