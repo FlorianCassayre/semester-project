@@ -64,8 +64,8 @@ trait FOL {
 
   class TheoremContext(val invalid: Set[AtomicBoolean], val dirty: Boolean)
 
-  final class Theorem[+F <: Formula] private(f: F, private[fol] val context: TheoremContext) {
-    private def checkState(): Unit = {
+  final class Theorem[+F <: Formula] private[FOL] (f: F, private[fol] val context: TheoremContext) {
+    private[FOL] def checkState(): Unit = {
       if(!isValid) {
         throw new IllegalStateException("Illegal theorem")
       }
@@ -78,7 +78,7 @@ trait FOL {
     def isDirty: Boolean = context.dirty
     override def toString: String = formula.toString
   }
-  object Theorem {
+  object Axiom {
     private[theory] def apply[F <: Formula](formula: F, dirty: Boolean = false): Theorem[F] = new Theorem(formula, new TheoremContext(Set.empty, dirty))
     private[theory] def apply[F <: Formula](formula: F, old: Set[Theorem[_]]): Theorem[F] = {
       old.foreach(_.checkState())
