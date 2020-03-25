@@ -123,8 +123,7 @@ trait NBGTheorems extends NBGRules {
   /** `M({x, y})` given `M(x)` and `M(y)` */
   def pairIsSet[X <: AnySet, Y <: AnySet](tx: Theorem[IsSet[X]], ty: Theorem[IsSet[Y]]): Theorem[IsSet[PairSet[X, Y]]] = {
     val (x, y) = (tx.formula.s, ty.formula.s)
-
-    oops(IsSet(PairSet(x, y))) // TODO
+    axiomPS(x, y)(tx)(ty)
   }
 
   /** `M({x})` given `M(x)` */

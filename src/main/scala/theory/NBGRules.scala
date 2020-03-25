@@ -58,6 +58,10 @@ trait NBGRules extends NBGTheory {
   def axiomP[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: (Member[Z, PairSet[X, Y]] <-> ((Z === X) \/ (Z === Y)))] =
     Theorem(IsSet(x) ->: IsSet(y) ->: IsSet(z) ->: ((z in PairSet(x, y)) <-> ((z === x) \/ (z === y))))
 
+  /** `M(x) -> M(y) -> M({x, y})` */
+  def axiomPS[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[PairSet[X, Y]]] =
+    Theorem(IsSet(x) ->: IsSet(y) ->: IsSet(PairSet(x, y)))
+
   /** `M(x) -> ~(x in {})` */
   def axiomN[X <: AnySet](x: X): Theorem[IsSet[X] ->: ~[Member[X, EmptySet]]] = Theorem(IsSet(x) ->: ~(x in EmptySet))
 
