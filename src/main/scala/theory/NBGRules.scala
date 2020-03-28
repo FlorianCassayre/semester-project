@@ -70,8 +70,6 @@ trait NBGRules extends NBGTheory {
   def axiomB1[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[OrderedPair[X, Y], SkolemConstant[FD]] <-> Member[X, Y])] =
     Axiom(IsSet(x) ->: IsSet(y) ->: ((OrderedPair(x, y) in SkolemConstant[FD]) <-> (x in y)))
 
-
-
   // --
 
   /** `M(z) -> (z in (x inter y)) <-> ((z in x) /\ (z in y))` */

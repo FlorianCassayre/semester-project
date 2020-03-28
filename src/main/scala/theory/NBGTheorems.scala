@@ -250,4 +250,45 @@ trait NBGTheorems extends NBGRules {
     equalsIff2(xy, yx)(impliesToIffRule(schema(x, y), schema(y, x)))
   }
 
+  /** `x = y <-> -x = -y` */
+  def complementCongruence[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (-[X] === -[Y])] = {
+    val to: Theorem[(X === Y) ->: (-[X] === -[Y])] = assume(x === y) { hyp =>
+      val z = SkolemFunction2[FA, -[X], -[Y]](-x, -y)
+      val sz = isSetFa(-x, -y)
+
+      equalsIff2(-x, -y)(iffTransitive(
+        iffTransitive(
+          complementIff(x, z)(sz),
+          iffAddNot(equalsIff1(x, y, z)(hyp))
+        ),
+        iffCommutative(complementIff(y, z)(sz))
+      ))
+    }
+
+    val from: Theorem[(-[X] === -[Y]) ->: (X === Y)] = assume(-x === -y) { hyp =>
+      val z = SkolemFunction2[FA, X, Y](x, y)
+      val sz = isSetFa(x, y)
+
+      equalsIff2(x, y)(iffRemoveNot(iffTransitive(
+        iffTransitive(
+          iffCommutative(complementIff(x, z)(sz)),
+          equalsIff1(-x, -y, z)(hyp)
+        ),
+        complementIff(y, z)(sz)
+      )))
+    }
+
+    impliesToIffRule(to, from)
+  }
+
+  /** `(x union y) = (y union x)` */
+  def unionCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Union[X, Y] === Union[Y, X]] =
+    equalsTransitive(
+      equalsTransitive(
+        unionIff(x, y),
+        complementCongruence(-x inter -y, -y inter -x)(intersectCommutative(-x, -y))
+      ),
+      equalsSymmetric(unionIff(y, x))
+    )
+
 }

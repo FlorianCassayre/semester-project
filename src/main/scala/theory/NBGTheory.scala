@@ -55,7 +55,7 @@ trait NBGTheory extends FOLTheorems {
     def sub[T <: AnySet](that: T): SubsetStrict[S, T] = SubsetStrict(set, that)
     def sube[T <: AnySet](that: T): SubsetEqual[S, T] = SubsetEqual(set, that)
     def inter[T <: AnySet](that: T): Intersect[S, T] = Intersect(set, that)
-    def unary_- : Complement[S] = Complement(set)
+    def unary_- : -[S] = Complement(set)
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
     def diff[T <: AnySet](that: T): Difference[S, T] = Difference(set, that)
   }

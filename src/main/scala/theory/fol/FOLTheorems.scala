@@ -181,6 +181,14 @@ trait FOLTheorems extends FOLRules {
       ))
   }
 
+  /** `p <-> q` given `~p <-> ~q` */
+  def iffRemoveNot[P <: Formula, Q <: Formula](thm: Theorem[~[P] <-> ~[Q]]): Theorem[P <-> Q] = thm.formula match {
+    case ~(p) <-> ~(q) =>
+      val to = assume(p)(tp => mixedDoubleNegationInvert(impliesTransitive(toImplies(iffCommutative(thm)), mixedDoubleNegation(tp))))
+      val from = assume(q)(tq => mixedDoubleNegationInvert(impliesTransitive(toImplies(thm), mixedDoubleNegation(tq))))
+      impliesToIffRule(to, from)
+  }
+
   // --
 
   def assume[P1 <: Formula, P2 <: Formula, Q <: Formula](p1: P1, p2: P2)(certificate: (Theorem[P1], Theorem[P2]) => Theorem[Q]): Theorem[P1 ->: P2 ->: Q] =
