@@ -65,10 +65,44 @@ trait NBGRules extends NBGTheory {
   /** `M(x) -> ~(x in {})` */
   def axiomN[X <: AnySet](x: X): Theorem[IsSet[X] ->: ~[Member[X, EmptySet]]] = Axiom(IsSet(x) ->: ~(x in EmptySet))
 
+  type FD = "d"
+  /** `M(x) -> M(y) -> ((<x, y> in d) <-> (x in y))` */
+  def axiomB1[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[OrderedPair[X, Y], SkolemConstant[FD]] <-> Member[X, Y])] =
+    Axiom(IsSet(x) ->: IsSet(y) ->: ((OrderedPair(x, y) in SkolemConstant[FD]) <-> (x in y)))
+
+
+
   // --
 
-  /** z in (x inter y)) <-> ((z in x) /\ (z in y)) */
-  def intersectIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Member[Z, Intersect[X, Y]] <-> (Member[Z, X] /\ Member[Z, Y])] =
-    Axiom((z in (x inter y)) <-> ((z in x) /\ (z in y)))
+  /** `M(z) -> (z in (x inter y)) <-> ((z in x) /\ (z in y))` */
+  def intersectIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Z] ->: (Member[Z, Intersect[X, Y]] <-> (Member[Z, X] /\ Member[Z, Y]))] =
+    Axiom(IsSet(z) ->: ((z in (x inter y)) <-> ((z in x) /\ (z in y))))
+
+  /** `M(y) -> ((y in -x) <-> ~(y in x)` */
+  def complementIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[Y] ->: (Member[Y, -[X]] <-> ~[Member[Y, X]])] =
+    Axiom(IsSet(y) ->: ((y in -x) <-> ~(y in x)))
+
+  /** `M(y) -> M(z) -> ((<y, z> in x) -> (y in D(x)))` */
+  def domainIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Y] ->: IsSet[Z] ->: Member[OrderedPair[Y, Z], X] ->: Member[Y, Domain[X]]] =
+    Axiom(IsSet(y) ->: IsSet(z) ->: (OrderedPair(y, z) in x) ->: (y in Domain(x)))
+
+  type FE = "e"
+  /** `M(e(x, y))` */
+  def isSetFe[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[SkolemFunction2[FE, X, Y]]] = Axiom(IsSet(SkolemFunction2(x, y)))
+
+  /** `M(y) -> ((y in D(x)) -> (<y, e(x, y)> in x))` */
+  def domainIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[Y] ->: Member[Y, Domain[X]] ->: Member[OrderedPair[Y, SkolemFunction2[FE, X, Y]], X]] =
+    Axiom(IsSet(y) ->: (y in Domain(x)) ->: (OrderedPair(y, SkolemFunction2[FE, X, Y](x, y)) in x))
+
+  /** `x union y = -(-x inter -y)` */
+  def unionIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Union[X, Y] === -[Intersect[-[X], -[Y]]]] =
+    Axiom((x union y) === -(-x inter -y))
+
+  /** `U = -{}` */
+  def universeIff: Theorem[Universe === -[EmptySet]] = Axiom(Universe === -EmptySet)
+
+  /** `x diff y = x inter -y` */
+  def differenceIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Difference[X, Y] === Intersect[X, -[Y]]] =
+    Axiom((x diff y) === (x inter -y))
 
 }

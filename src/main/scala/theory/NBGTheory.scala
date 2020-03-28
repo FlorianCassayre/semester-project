@@ -36,8 +36,13 @@ trait NBGTheory extends FOLTheorems {
   case class OrderedPair[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
 
   case class Intersect[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
+  case class Complement[A <: AnySet](a: A) extends AnySet
+  case class Domain[A <: AnySet](a: A) extends AnySet
+
   case class Union[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Difference[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
+  case object Universe extends AnySet
+  type Universe = Universe.type
 
   case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet
@@ -50,9 +55,12 @@ trait NBGTheory extends FOLTheorems {
     def sub[T <: AnySet](that: T): SubsetStrict[S, T] = SubsetStrict(set, that)
     def sube[T <: AnySet](that: T): SubsetEqual[S, T] = SubsetEqual(set, that)
     def inter[T <: AnySet](that: T): Intersect[S, T] = Intersect(set, that)
+    def unary_- : Complement[S] = Complement(set)
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
     def diff[T <: AnySet](that: T): Difference[S, T] = Difference(set, that)
   }
   implicit def setToExtended[S <: AnySet](set: S): ExtendedSet[S] = new ExtendedSet[S](set)
+
+  type -[X <: AnySet] = Complement[X]
 
 }

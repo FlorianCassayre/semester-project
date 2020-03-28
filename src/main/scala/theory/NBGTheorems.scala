@@ -237,16 +237,17 @@ trait NBGTheorems extends NBGRules {
   /** `(x inter y) = (y inter x)` */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
     type C = SkolemFunction2[FA, Intersect[X, Y], Intersect[Y, X]]
+    val (xy, yx) = (x inter y, y inter x)
+    val c: C = SkolemFunction2(xy, yx)
+    val sc = isSetFa(xy, yx)
 
-    def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Member[C, Intersect[A, B]] ->: Member[C, Intersect[B, A]]] = {
-      val c: C = SkolemFunction2(x inter y, y inter x)
+    def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Member[C, Intersect[A, B]] ->: Member[C, Intersect[B, A]]] =
       impliesTransitive(
-        impliesTransitive(toImplies(intersectIff(a, b, c)), assume((c in a) /\ (c in b))(andCommutative)),
-        toImplies(iffCommutative(intersectIff(b, a, c)))
+        impliesTransitive(toImplies(intersectIff(a, b, c)(sc)), assume((c in a) /\ (c in b))(andCommutative)),
+        toImplies(iffCommutative(intersectIff(b, a, c)(sc)))
       )
-    }
 
-    equalsIff2(x inter y, y inter x)(impliesToIffRule(schema(x, y), schema(y, x)))
+    equalsIff2(xy, yx)(impliesToIffRule(schema(x, y), schema(y, x)))
   }
 
 }
