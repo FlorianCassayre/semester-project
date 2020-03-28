@@ -65,6 +65,9 @@ trait NBGRules extends NBGTheory {
   /** `M(x) -> ~(x in {})` */
   def axiomN[X <: AnySet](x: X): Theorem[IsSet[X] ->: ~[Member[X, EmptySet]]] = Axiom(IsSet(x) ->: ~(x in EmptySet))
 
+  /** `M({})` */
+  def axiomNS: Theorem[IsSet[EmptySet]] = Axiom(IsSet(EmptySet))
+
   type FD = "d"
   /** `M(x) -> M(y) -> ((<x, y> in d) <-> (x in y))` */
   def axiomB1[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[OrderedPair[X, Y], SkolemConstant[FD]] <-> Member[X, Y])] =
