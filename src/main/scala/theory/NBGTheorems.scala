@@ -2,16 +2,23 @@ package theory
 
 trait NBGTheorems extends NBGRules {
 
+  type ZEq[X <: AnySet, Y <: AnySet] = SkolemFunction2[FA, X, Y]
+
+  private def zEq[X <: AnySet, Y <: AnySet](x: X, y: Y): ZEq[X, Y] = SkolemFunction2[FA, X, Y](x, y)
+
+  private def zEqPair[X <: AnySet, Y <: AnySet](x: X, y: Y): (ZEq[X, Y], Theorem[IsSet[SkolemFunction2[FA, X, Y]]]) =
+    (SkolemFunction2[FA, X, Y](x, y), isSetFa(x, y))
+
   /** `(x = y) <-> ((x sube y) /\ (y sube x))` */
   def equalsSubset[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (SubsetEqual[X, Y] /\ SubsetEqual[Y, X])] = {
-    val to = assume(x === y) { xy =>
+    val ~> = assume(x === y) { xy =>
       andCombine(
         subsetEqIff2(x, y)(toImplies(equalsIff1(x, y, SkolemFunction2[FB, X, Y](x, y))(xy))),
         subsetEqIff2(y, x)(toImplies(equalsIff1(y, x, SkolemFunction2[FB, Y, X](y, x))(equalsSymmetric(xy))))
       )
     }
-    val from = assume((x sube y) /\ (y sube x)) { sub =>
-      val z = SkolemFunction2[FA, X, Y](x, y)
+    val <~ = assume((x sube y) /\ (y sube x)) { sub =>
+      val z = zEq(x, y)
       val (lhs, rhs) = (subsetEqIff1(x, y, z)(andExtractLeft(sub)), subsetEqIff1(y, x, z)(andExtractLeft(andCommutative(sub))))
       equalsIff2(x, y) {
         val and = andCombine(lhs, rhs)
@@ -19,23 +26,23 @@ trait NBGTheorems extends NBGRules {
       }
     }
 
-    impliesToIff(x === y, (x sube y) /\ (y sube x))(to)(from)
+    impliesToIffRule(~>, <~)
   }
 
   /** `x = x` */
   def equalsReflexive[X <: AnySet](x: X): Theorem[X === X] =
-    equalsIff2(x, x)(iffReflexive(SkolemFunction2[FA, X, X](x, x) in x))
+    equalsIff2(x, x)(iffReflexive(zEq(x, x) in x))
 
   /** `y = x` given `x = y` */
   def equalsSymmetric[X <: AnySet, Y <: AnySet](thm: Theorem[X === Y]): Theorem[Y === X] = thm.formula match {
     case x === y =>
-      equalsIff2(y, x)(iffCommutative(equalsIff1(x, y, SkolemFunction2[FA, Y, X](y, x))(thm)))
+      equalsIff2(y, x)(iffCommutative(equalsIff1(x, y, zEq(y, x))(thm)))
   }
 
   /** `x = z` given `x = y` and `y = z` */
   def equalsTransitive[X <: AnySet, Y <: AnySet, Z <: AnySet](xy: Theorem[X === Y], yz: Theorem[Y === Z]): Theorem[X === Z] = (xy.formula, yz.formula) match {
     case (x === y1, y2 === z) if y1 == y2 =>
-      val f = SkolemFunction2[FA, X, Z](x, z)
+      val f = zEq(x, z)
       val and = andCombine(equalsIff1(x, y1, f)(xy), equalsIff1(y1, z, f)(yz))
 
       equalsIff2(x, z)(iffTransitive(andExtractLeft(and), andExtractLeft(andCommutative(and))))
@@ -54,10 +61,9 @@ trait NBGTheorems extends NBGRules {
 
   /** M(x) -> M(y) -> ({x, y} = {y, x}) */
   def pairCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (PairSet[X, Y] === PairSet[Y, X])] = {
-    type F = SkolemFunction2[FA, PairSet[X, Y], PairSet[Y, X]]
+    type F = ZEq[PairSet[X, Y], PairSet[Y, X]]
     val (xy, yx) = (PairSet(x, y), PairSet(y, x))
-    val z: F = SkolemFunction2(xy, yx)
-    val sz = isSetFa(xy, yx)
+    val (z, sz) = zEqPair(xy, yx)
 
     assume(IsSet(x), IsSet(y)) { (sx, sy) =>
       def implies[A <: AnySet, B <: AnySet](ta: Theorem[IsSet[A]], tb: Theorem[IsSet[B]]): Theorem[Member[F, PairSet[A, B]] ->: Member[F, PairSet[B, A]]] = {
@@ -95,7 +101,7 @@ trait NBGTheorems extends NBGRules {
   def singletonCongruence[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: ((SingletonSet[X] === SingletonSet[Y]) <-> (X === Y))] = {
     assume(IsSet(x), IsSet(y)) { (sx, sy) =>
 
-      val to = assume(SingletonSet(x) === SingletonSet(y)) { xy =>
+      val ~> = assume(SingletonSet(x) === SingletonSet(y)) { xy =>
         iffTransitive(
           iffTransitive(
             iffCommutative(singletonEquals(x, x)(sx)(sx)),
@@ -105,9 +111,8 @@ trait NBGTheorems extends NBGRules {
         )(equalsReflexive(x))
       }
 
-      val from = assume(x === y) { xy =>
-        val f = SkolemFunction2[FA, SingletonSet[X], SingletonSet[Y]](SingletonSet(x), SingletonSet(y))
-        val setFa = isSetFa(SingletonSet(x), SingletonSet(y))
+      val <~ = assume(x === y) { xy =>
+        val (f, setFa) = zEqPair(SingletonSet(x), SingletonSet(y))
         equalsIff2(SingletonSet(x), SingletonSet(y))(iffTransitive(
           iffTransitive(
             singletonMembershipCommutative(f, x)(setFa)(sx),
@@ -117,7 +122,7 @@ trait NBGTheorems extends NBGRules {
         ))
       }
 
-      impliesToIffRule(to, from)
+      impliesToIffRule(~>, <~)
     }
   }
 
@@ -234,12 +239,63 @@ trait NBGTheorems extends NBGRules {
     }
   }
 
+  /** `M(z) -> (z in (x union y) <-> ((z in x) \/ (z in y)))` */
+  def unionContains[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Z] ->: (Member[Z, Union[X, Y]] <-> (Member[Z, X] \/ Member[Z, Y]))] = assume(IsSet(z)) { sz =>
+    val ~> = assume(z in (x union y)) { hyp =>
+      notUnduplicate(impliesInverse(
+        assume(~((z in x) \/ (z in y)))(hyp2 =>
+          andCombine(
+            iffCommutative(complementIff(x, z)(sz))(andExtractLeft(iffSwapNot(orIff(z in x, z in y))(hyp2))),
+            iffCommutative(complementIff(y, z)(sz))(andExtractLeft(andCommutative(iffSwapNot(orIff(z in x, z in y))(hyp2))))
+          )
+        )
+      )(
+        iffAddNot(intersectIff(-x, -y, z)(sz))(complementIff(-x inter -y, z)(sz)(equalsIff1(x union y, -(-x inter -y), z)(unionIff(x, y))(hyp)))
+      ))
+    }
+
+    val <~ = assume((z in x) \/ (z in y)) { hyp =>
+      equalsIff1(-(-x inter -y), x union y, z)(equalsSymmetric(unionIff(x, y)))(iffCommutative(complementIff(-x inter -y, z)(sz))(
+        iffCommutative(notIff(z in (-x inter -y)))(impliesTransitive(
+          impliesTransitive(
+            toImplies(intersectIff(-x, -y, z)(sz)),
+            assume((z in -x) /\ (z in -y))(hyp2 =>
+              andCombine(complementIff(x, z)(sz)(andExtractLeft(hyp2)), complementIff(y, z)(sz)(andExtractLeft(andCommutative(hyp2))))
+            )
+          ),
+          notIff(~(z in x) /\ ~(z in y))(orIff(z in x, z in y)(hyp))
+        ))
+      ))
+    }
+
+    impliesToIffRule(~>, <~)
+  }
+
+  /** `M(x) -> (x in U)` */
+  def universeContains[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, Universe]] =
+    assume(IsSet(x))(sx => iffCommutative(iffTransitive(equalsIff1(Universe, -EmptySet, x)(universeIff), complementIff(EmptySet, x)(sx)))(axiomN(x)(sx)))
+
+  /** `M(z) -> (z in (x diff y) <-> ((z in x) /\ ~(z in y)))` */
+  def differenceContains[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Z] ->: (Member[Z, Difference[X, Y]] <-> (Member[Z, X] /\ ~[Member[Z, Y]]))] = assume(IsSet(z)) { sz =>
+    val ~> = assume(z in (x diff y)) { hyp =>
+      val t = intersectIff(x, -y, z)(sz)(equalsIff1(x diff y, x inter -y, z)(differenceIff(x, y))(hyp))
+      andCombine(andExtractLeft(t), complementIff(y, z)(sz)(andExtractLeft(andCommutative(t))))
+    }
+
+    val <~ = assume((z in x) /\ ~(z in y)) { hyp =>
+      equalsIff1(x inter -y, x diff y, z)(equalsSymmetric(differenceIff(x, y)))(iffCommutative(intersectIff(x, -y, z)(sz))(
+        andCombine(andExtractLeft(hyp), iffCommutative(complementIff(y, z)(sz))(andExtractLeft(andCommutative(hyp))))
+      ))
+    }
+
+    impliesToIffRule(~>, <~)
+  }
+
   /** `(x inter y) = (y inter x)` */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
-    type C = SkolemFunction2[FA, Intersect[X, Y], Intersect[Y, X]]
+    type C = ZEq[Intersect[X, Y], Intersect[Y, X]]
     val (xy, yx) = (x inter y, y inter x)
-    val c: C = SkolemFunction2(xy, yx)
-    val sc = isSetFa(xy, yx)
+    val (c, sc) = zEqPair(xy, yx)
 
     def schema[A <: AnySet, B <: AnySet](a: A, b: B): Theorem[Member[C, Intersect[A, B]] ->: Member[C, Intersect[B, A]]] =
       impliesTransitive(
@@ -252,9 +308,8 @@ trait NBGTheorems extends NBGRules {
 
   /** `x = y <-> -x = -y` */
   def complementCongruence[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (-[X] === -[Y])] = {
-    val to: Theorem[(X === Y) ->: (-[X] === -[Y])] = assume(x === y) { hyp =>
-      val z = SkolemFunction2[FA, -[X], -[Y]](-x, -y)
-      val sz = isSetFa(-x, -y)
+    val ~> = assume(x === y) { hyp =>
+      val (z, sz) = zEqPair(-x, -y)
 
       equalsIff2(-x, -y)(iffTransitive(
         iffTransitive(
@@ -265,9 +320,8 @@ trait NBGTheorems extends NBGRules {
       ))
     }
 
-    val from: Theorem[(-[X] === -[Y]) ->: (X === Y)] = assume(-x === -y) { hyp =>
-      val z = SkolemFunction2[FA, X, Y](x, y)
-      val sz = isSetFa(x, y)
+    val <~ = assume(-x === -y) { hyp =>
+      val (z, sz) = zEqPair(x, y)
 
       equalsIff2(x, y)(iffRemoveNot(iffTransitive(
         iffTransitive(
@@ -278,7 +332,7 @@ trait NBGTheorems extends NBGRules {
       )))
     }
 
-    impliesToIffRule(to, from)
+    impliesToIffRule(~>, <~)
   }
 
   /** `(x union y) = (y union x)` */
@@ -290,5 +344,117 @@ trait NBGTheorems extends NBGRules {
       ),
       equalsSymmetric(unionIff(y, x))
     )
+
+  /** `x sube y <-> (x inter y = x)` */
+  def subsetIntersect[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] <-> (Intersect[X, Y] === X)] = {
+    val ~> : Theorem[SubsetEqual[X, Y] ->: (Intersect[X, Y] === X)] = assume(SubsetEqual(x, y)) { hyp =>
+      val z = zEq(x inter y, x)
+
+      equalsIff2(x inter y, x)(iffTransitive(
+        intersectIff(x, y, z)(isSetFa(x inter y, x)),
+        impliesToIffRule(assume((z in x) /\ (z in y))(andExtractLeft), assume(z in x)(hyp2 => andCombine(hyp2, subsetEqIff1(x, y, z)(hyp)(hyp2))))
+      ))
+    }
+
+    val <~ : Theorem[(Intersect[X, Y] === X) ->: SubsetEqual[X, Y]] = assume((x inter y) === x) { hyp =>
+      val z = SkolemFunction2[FB, X, Y](x, y)
+
+      subsetEqIff2(x, y)(assume(z in x)(hyp2 => andExtractLeft(andCommutative(iffTransitive(
+        iffCommutative(equalsIff1(x inter y, x, z)(hyp)),
+        intersectIff(x, y, z)(isSetFb(x, y))
+      )(hyp2)))))
+    }
+
+    impliesToIffRule(~>, <~)
+  }
+
+  /** `x sube y <-> (x union y = y)` */
+  def subsetUnion[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] <-> (Union[X, Y] === Y)] = ???
+
+  /** `(x inter y) inter z = x inter (y inter z)` */
+  def intersectAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[Intersect[X, Y], Z] === Intersect[X, Intersect[Y, Z]]] = ???
+
+  /** `(x union y) union z = x union (y union z)` */
+  def unionAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[Union[X, Y], Z] === Union[X, Union[Y, Z]]] = ???
+
+  /** `(x inter x) = x` */
+  def intersectIndempotent[X <: AnySet](x: X): Theorem[Intersect[X, X] === X] = {
+    val (z, sz) = zEqPair(x inter x, x)
+
+    val t = intersectIff(x, x, z)(sz)
+    val ~> = assume(z in (x inter x))(hyp => andExtractLeft(t(hyp)))
+    val <~ = assume(z in x)(hyp => iffCommutative(t)(andCombine(hyp, hyp)))
+
+    equalsIff2(x inter x, x)(impliesToIffRule(~>, <~))
+  }
+
+  /** `(x union x) = x` */
+  def unionIndempotent[X <: AnySet](x: X): Theorem[Union[X, X] === X] = {
+    val (z, sz) = zEqPair(x union x, x)
+
+    val t = unionContains(x, x, z)(sz)
+    val ~> = assume(z in (x union x))(hyp => orUnduplicate(t(hyp)))
+    val <~ = assume(z in x)(hyp => iffCommutative(t)(orAddRight(hyp, hyp.formula)))
+
+    equalsIff2(x union x, x)(impliesToIffRule(~>, <~))
+  }
+
+  /** `(x inter {}) = {}` */
+  def intersectEmpty[X <: AnySet](x: X): Theorem[Intersect[X, EmptySet] === EmptySet] = {
+    val (z, sz) = zEqPair(x inter EmptySet, EmptySet)
+
+    val t = notIff(z in EmptySet)(axiomN(z)(sz))
+    val ~> = assume((z in x) /\ (z in EmptySet))(hyp => exFalso(z in EmptySet)(t(andExtractLeft(andCommutative(hyp)))))
+    val <~ = assume(z in EmptySet)(hyp => andCombine(exFalso(z in x)(t(hyp)), hyp))
+
+    equalsIff2(x inter EmptySet, EmptySet)(iffTransitive(intersectIff(x, EmptySet, z)(sz), impliesToIffRule(~>, <~)))
+  }
+
+  /** `(x union {}) = x` */
+  def unionEmpty[X <: AnySet](x: X): Theorem[Union[X, EmptySet] === X] = ???
+
+  /** `(x inter U) = x` */
+  def intersectUniverse[X <: AnySet](x: X): Theorem[Intersect[X, Universe] === X] = ???
+
+  /** `(x union U) = U` */
+  def unionUniverse[X <: AnySet](x: X): Theorem[Union[X, Universe] === Universe] = ???
+
+  /** `-(x union y) = (-x union -y)` */
+  def unionComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Union[X, Y]] === Union[-[X], -[Y]]] = ???
+
+  /** `-(x inter y) = (-x union -y)` */
+  def intersectComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Intersect[X, Y]] === Union[-[X], -[Y]]] = ???
+
+  /** `(x diff x) = {}` */
+  def differenceSelf[X <: AnySet](x: X): Theorem[Difference[X, X] === EmptySet] = ???
+
+  /** `(U diff x) = -x` */
+  def universeDifference[X <: AnySet](x: X): Theorem[Difference[Universe, X] === -[X]] = ???
+
+  /** `x diff (x diff y) = (x inter y)` */
+  def doubleDifference[X <: AnySet, Y <: AnySet]: Theorem[Difference[X, Difference[X, Y]] === Intersect[X, Y]] = ???
+
+  /** `y sube -x -> (x diff y) = x` */
+  def subsetDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[Y, -[X]] ->: (Difference[X, Y] === X)] = ???
+
+  /** `--x = x` */
+  def doubleComplement[X <: AnySet](x: X): Theorem[-[-[X]] === X] = {
+    val (z, sz) = zEqPair(-(-x), x)
+
+    equalsIff2(-(-x), x)(iffTransitive(iffTransitive(complementIff(-x, z)(sz), iffAddNot(complementIff(x, z)(sz))), doubleNotIff(z in x)))
+  }
+
+  /** `-U = {}` */
+  def universeComplement: Theorem[-[Universe] === EmptySet] = {
+    val (z, sz) = zEqPair(-Universe, EmptySet)
+
+    equalsIff2(-Universe, EmptySet)(iffTransitive(complementIff(Universe, z)(sz), iffSwapNot(andToIff(andCombine(universeContains(z)(sz), axiomN(z)(sz))))))
+  }
+
+  /** `x inter (y union z) = (x inter y) union (x inter z)` */
+  def intersectDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[X, Intersect[Y, Z]] === Union[Intersect[X, Y], Intersect[X, Z]]] = ???
+
+  /** `x union (y inter z) = (x union y) inter (x union z)` */
+  def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Union[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
 
 }

@@ -128,6 +128,10 @@ trait FOLTheorems extends FOLRules {
     toImplies(iffCommutative(notIff(~p)))(mixedDoubleNegation(thm))
   }
 
+  /** `~~p <-> p` */
+  def doubleNotIff[P <: Formula](p: P): Theorem[~[~[P]] <-> P] =
+    impliesToIffRule(assume(~(~p))(notUnduplicate), assume(p)(notDuplicate))
+
   /** `p` given `p \/ p` */
   def orUnduplicate[P <: Formula](thm: Theorem[P \/ P]): Theorem[P] = thm.formula match {
     case p \/ p1 if p == p1 =>
@@ -187,6 +191,22 @@ trait FOLTheorems extends FOLRules {
       val to = assume(p)(tp => mixedDoubleNegationInvert(impliesTransitive(toImplies(iffCommutative(thm)), mixedDoubleNegation(tp))))
       val from = assume(q)(tq => mixedDoubleNegationInvert(impliesTransitive(toImplies(thm), mixedDoubleNegation(tq))))
       impliesToIffRule(to, from)
+  }
+
+  /** `~p <-> q` given `p <-> ~q` */
+  def iffSwapNot[P <: Formula, Q <: Formula](thm: Theorem[P <-> ~[Q]]): Theorem[~[P] <-> Q] = thm.formula match {
+    case p <-> ~(q) =>
+      val t = iffAddNot(thm)
+      impliesToIffRule(assume(~p)(np => notUnduplicate(t(np))), assume(q)(tq => iffCommutative(t)(notDuplicate(tq))))
+  }
+
+  /** `false -> p` */
+  def exFalso[P <: Formula](p: P): Theorem[False ->: P] = assume(False)(h => doubleNegation(p)(assume(p ->: False)(_ => h)))
+
+  /** `p <-> q` given `p /\ q` */
+  def andToIff[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[P <-> Q] = thm.formula match {
+    case p /\ q =>
+      impliesToIffRule(assume(p)(_ => andExtractLeft(andCommutative(thm))), assume(q)(_ => andExtractLeft(thm)))
   }
 
   // --

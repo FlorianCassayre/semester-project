@@ -21,6 +21,9 @@ trait NBGRules extends NBGTheory {
     Axiom((x sube y) ->: ((z in x) ->: (z in y)))
 
   type FB = "b"
+  /** `M(b(x, y))` */
+  def isSetFb[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[SkolemFunction2[FB, X, Y]]] = Axiom(IsSet(SkolemFunction2[FB, X, Y](x, y)))
+
   /** `(b(x, y) in x -> b(x, y) in y) -> (x sube y)` */
   def subsetEqIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(Member[SkolemFunction2[FB, X, Y], X] ->: Member[SkolemFunction2[FB, X, Y], Y]) ->: SubsetEqual[X, Y]] = {
     val b = SkolemFunction2[FB, X, Y](x, y)
