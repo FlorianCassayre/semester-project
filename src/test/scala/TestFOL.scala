@@ -104,6 +104,10 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(iffTransitive(p <-> q, q <-> r).formula == p <-> r)
   }
 
+  test("implies to iff rule") {
+    assert(impliesToIffRule(p ->: q, q ->: p).formula == p <-> q)
+  }
+
   test("to double negation") {
     assert(toDoubleNegation(p).formula == (p ->: False) ->: False)
   }
@@ -112,12 +116,20 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(mixedDoubleNegation(p).formula == ~p ->: False)
   }
 
+  test("mixed double negation invert") {
+    assert(mixedDoubleNegationInvert(~p ->: False).formula == p)
+  }
+
   test("not unduplicate") {
     assert(notUnduplicate(~(~p)).formula == p)
   }
 
   test("not duplicate") {
     assert(notDuplicate(p).formula == ~(~p))
+  }
+
+  test("double not iff") {
+    doubleNotIff(~(~p) <-> p)
   }
 
   test("or unduplicate") {
@@ -140,7 +152,27 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(impliesInverse(p ->: q).formula == ~q ->: ~p)
   }
 
+  test("or implies") {
+    assert(orImplies(p \/ q).formula == ~p ->: ~q ->: False)
+  }
+
   test("or case") {
     assert(orCase(p \/ q, p ->: r, q ->: r).formula == r)
+  }
+
+  test("iff remove not") {
+    assert(iffRemoveNot(~p <-> ~q).formula == p <-> q)
+  }
+
+  test("iff swap not") {
+    assert(iffSwapNot(p <-> ~q).formula == ~p <-> q)
+  }
+
+  test("ex falso") {
+    assert(exFalso(p).formula == False ->: p)
+  }
+
+  test("and to iff") {
+    assert(andToIff(p /\ q).formula == p <-> q)
   }
 }

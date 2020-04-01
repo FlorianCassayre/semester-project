@@ -411,13 +411,35 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `(x union {}) = x` */
-  def unionEmpty[X <: AnySet](x: X): Theorem[Union[X, EmptySet] === X] = ???
+  def unionEmpty[X <: AnySet](x: X): Theorem[Union[X, EmptySet] === X] = {
+    val (z, sz) = zEqPair(x union EmptySet, x)
+
+    val ~> = assume((z in x) \/ (z in EmptySet))(hyp => mixedDoubleNegationInvert(swapAssumptions(orImplies(hyp))(axiomN(z)(sz))))
+    val <~ = assume(z in x)(hyp => orAddRight(hyp, z in EmptySet))
+
+    equalsIff2(x union EmptySet, x)(iffTransitive(unionContains(x, EmptySet, z)(sz), impliesToIffRule(~>, <~)))
+  }
 
   /** `(x inter U) = x` */
-  def intersectUniverse[X <: AnySet](x: X): Theorem[Intersect[X, Universe] === X] = ???
+  def intersectUniverse[X <: AnySet](x: X): Theorem[Intersect[X, Universe] === X] = {
+    val (z, sz) = zEqPair(x inter Universe, x)
+
+    val ~> = assume((z in x) /\ (z in Universe))(andExtractLeft)
+    val <~ = assume(z in x)(hyp => andCombine(hyp, universeContains(z)(sz)))
+
+    equalsIff2(x inter Universe, x)(iffTransitive(intersectIff(x, Universe, z)(sz), impliesToIffRule(~>, <~)))
+  }
 
   /** `(x union U) = U` */
-  def unionUniverse[X <: AnySet](x: X): Theorem[Union[X, Universe] === Universe] = ???
+  def unionUniverse[X <: AnySet](x: X): Theorem[Union[X, Universe] === Universe] = {
+    val (z, sz) = zEqPair(x union Universe, Universe)
+
+    val t = universeContains(z)(sz)
+    val ~> = assume((z in x) \/ (z in Universe))(_ => t)
+    val <~ = assume(z in Universe)(_ => orCommutative(orAddRight(t, z in x)))
+
+    equalsIff2(x union Universe, Universe)(iffTransitive(unionContains(x, Universe, z)(sz), impliesToIffRule(~>, <~)))
+  }
 
   /** `-(x union y) = (-x union -y)` */
   def unionComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Union[X, Y]] === Union[-[X], -[Y]]] = ???
@@ -426,13 +448,27 @@ trait NBGTheorems extends NBGRules {
   def intersectComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Intersect[X, Y]] === Union[-[X], -[Y]]] = ???
 
   /** `(x diff x) = {}` */
-  def differenceSelf[X <: AnySet](x: X): Theorem[Difference[X, X] === EmptySet] = ???
+  def differenceSelf[X <: AnySet](x: X): Theorem[Difference[X, X] === EmptySet] = {
+    val (z, sz) = zEqPair(x diff x, EmptySet)
+
+    val ~> = assume((z in x) /\ ~(z in x))(hyp => exFalso(z in EmptySet)(notIff(z in x)(andExtractLeft(andCommutative(hyp)))(andExtractLeft(hyp))))
+    val <~ = assume(z in EmptySet)(hyp => exFalso((z in x) /\ ~(z in x))(notIff(z in EmptySet)(axiomN(z)(sz))(hyp)))
+
+    equalsIff2(x diff x, EmptySet)(iffTransitive(differenceContains(x, x, z)(sz), impliesToIffRule(~>, <~)))
+  }
 
   /** `(U diff x) = -x` */
-  def universeDifference[X <: AnySet](x: X): Theorem[Difference[Universe, X] === -[X]] = ???
+  def universeDifference[X <: AnySet](x: X): Theorem[Difference[Universe, X] === -[X]] = {
+    val (z, sz) = zEqPair(Universe diff x, -x)
+
+    val ~> = assume((z in Universe) /\ ~(z in x))(hyp => andExtractLeft(andCommutative(hyp)))
+    val <~ = assume(~(z in x))(hyp => andCombine(universeContains(z)(sz), hyp))
+
+    equalsIff2(Universe diff x, -x)(iffTransitive(iffTransitive(differenceContains(Universe, x, z)(sz), impliesToIffRule(~>, <~)), iffCommutative(complementIff(x, z)(sz))))
+  }
 
   /** `x diff (x diff y) = (x inter y)` */
-  def doubleDifference[X <: AnySet, Y <: AnySet]: Theorem[Difference[X, Difference[X, Y]] === Intersect[X, Y]] = ???
+  def doubleDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Difference[X, Difference[X, Y]] === Intersect[X, Y]] = ???
 
   /** `y sube -x -> (x diff y) = x` */
   def subsetDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[Y, -[X]] ->: (Difference[X, Y] === X)] = ???
@@ -452,9 +488,9 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `x inter (y union z) = (x inter y) union (x inter z)` */
-  def intersectDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[X, Intersect[Y, Z]] === Union[Intersect[X, Y], Intersect[X, Z]]] = ???
+  def intersectDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[X, Union[Y, Z]] === Union[Intersect[X, Y], Intersect[X, Z]]] = ???
 
   /** `x union (y inter z) = (x union y) inter (x union z)` */
-  def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Union[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
+  def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Intersect[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
 
 }
