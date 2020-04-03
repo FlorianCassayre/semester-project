@@ -87,20 +87,4 @@ trait FOL {
     private[theory] def apply[F <: Formula](formula: F, dirty: Boolean, refs: Set[AtomicBoolean]): Theorem[F] = new Theorem(formula, new TheoremContext(refs, dirty))
   }
 
-  // Modus ponens shorthands
-  final class ImpliesTheorem[P <: Formula, Q <: Formula](theorem: Theorem[P ->: Q]) {
-    def apply(p: Theorem[P]): Theorem[Q] = impliesModusPonens(theorem, p)
-  }
-  implicit def theoremToImplies[P <: Formula, Q <: Formula](theorem: Theorem[P ->: Q]): ImpliesTheorem[P, Q] =
-    new ImpliesTheorem[P, Q](theorem)
-  final class IffTheorem[P <: Formula, Q <: Formula](theorem: Theorem[P <-> Q]) {
-    def apply(p: Theorem[P]): Theorem[Q] = iffModusPonens(theorem, p)
-  }
-  implicit def theoremToIff[P <: Formula, Q <: Formula](theorem: Theorem[P <-> Q]): IffTheorem[P, Q] =
-    new IffTheorem[P, Q](theorem)
-
-
-  def impliesModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q]
-  def iffModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q], p: Theorem[P]): Theorem[Q]
-
 }

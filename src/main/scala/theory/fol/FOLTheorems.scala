@@ -2,6 +2,14 @@ package theory.fol
 
 trait FOLTheorems extends FOLRules {
 
+  // Modus ponens shorthands
+  implicit class WrapperImpliesMP[P <: Formula, Q <: Formula](thm: Theorem[P ->: Q]) {
+    def apply(p: Theorem[P]): Theorem[Q] = modusPonens(thm, p)
+  }
+  implicit class WrapperIffMP[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]) {
+    def apply(p: Theorem[P]): Theorem[Q] = modusPonens(modusPonens(iffToImplies1(thm.formula.x, thm.formula.y), thm), p)
+  }
+
   /** `p -> q -> p` */
   def addImplies[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[P ->: Q ->: P] = assume(p)(tp => assume(q)(_ => tp))
 
@@ -11,7 +19,7 @@ trait FOLTheorems extends FOLRules {
 
   /** `p -> q` given `p <-> q` */
   def toImplies[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q]): Theorem[P ->: Q] = {
-    theoremToImplies(iffToImplies1(pq.formula.x, pq.formula.y))(pq)
+    iffToImplies1(pq.formula.x, pq.formula.y)(pq)
   }
 
   /** `p -> q` given `q` */
@@ -158,7 +166,7 @@ trait FOLTheorems extends FOLRules {
     )
   }
 
-  /** `(q -> r) => (p -> r)` given `p => q`. */
+  /** `(q -> r) -> (p -> r)` given `p -> q` */
   def addConclusion[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P ->: Q], r: R): Theorem[(Q ->: R) ->: (P ->: R)] = pq.formula match {
     case p ->: q => assume(q ->: r)(qr => impliesTransitive(pq, qr))
   }
@@ -167,6 +175,10 @@ trait FOLTheorems extends FOLRules {
   def impliesInverse[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q]): Theorem[~[Q] ->: ~[P]] = pq.formula match {
     case p ->: q =>
       impliesTransitive(impliesTransitive(toImplies(notIff(q)), addConclusion(pq, False)), toImplies(iffCommutative(notIff(p))))
+  }
+
+  def impliesUninverse[P <: Formula, Q <: Formula](pq: Theorem[~[P] ->: ~[Q]]): Theorem[Q ->: P] = pq.formula match {
+    case ~(p) ->: ~(q) => assume(q)(tq => notUnduplicate(impliesInverse(pq)(notDuplicate(tq))))
   }
 
   /** `~p -> ~q -> false` given `p \/ q` */
@@ -225,5 +237,81 @@ trait FOLTheorems extends FOLRules {
 
   def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, P6 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5], Theorem[P6]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: P6 ->: Q] =
     assume(p1, p2, p3, p4, p5)((t1, t2, t3, t4, t5) => assume(p6)(t6 => certificate(t1, t2, t3, t4, t5, t6)))
+
+  // --
+
+  implicit def theoremToFormula[F <: Formula](thm: Theorem[F]): F = thm.formula
+
+  implicit class WrapperFormula[P <: Formula](f: P) {
+    def #\/[Q <: Formula](that: Theorem[Q]): Theorem[P \/ Q] = orCommutative(orAddRight(that, f))
+    def #->:[Q <: Formula](that: Theorem[Q]): Theorem[P ->: Q] = assume(f)(_ => that)
+    def reflexive: Theorem[P <-> P] = iffReflexive(f)
+  }
+
+  implicit class WrapperTheorem[P <: Formula](thm: Theorem[P]) {
+    def #\/[Q <: Formula](that: Q): Theorem[P \/ Q] = orAddRight(thm, that)
+    def #\/[Q <: Formula](that: Theorem[Q]): Theorem[P \/ Q] = orAddRight(thm, that.formula)
+    def #/\[Q <: Formula](that: Theorem[Q]): Theorem[P /\ Q] = andCombine(thm, that)
+    def #->:[Q <: Formula](that: Theorem[Q]): Theorem[P ->: Q] = addAssumption(thm.formula, that)
+    def #<->[Q <: Formula](that: Theorem[Q]): Theorem[P <-> Q] = andToIff(andCombine(thm, that))
+  }
+
+  implicit class WrapperIff[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]) {
+    def join[R <: Formula](that: Theorem[Q <-> R]): Theorem[P <-> R] = iffTransitive(thm, that)
+    def swap: Theorem[Q <-> P] = iffCommutative(thm)
+    def toImplies: Theorem[P ->: Q] = FOLTheorems.this.toImplies(thm)
+    def inverse: Theorem[~[P] <-> ~[Q]] = iffAddNot(thm)
+  }
+  implicit class WrapperIffN[P <: Formula, Q <: Formula](thm: Theorem[P <-> ~[Q]]) {
+    def swapNot: Theorem[~[P] <-> Q] = iffSwapNot(thm)
+  }
+  implicit class WrapperNIff[P <: Formula, Q <: Formula](thm: Theorem[~[P] <-> Q]) {
+    def swapNot: Theorem[P <-> ~[Q]] = iffCommutative(iffSwapNot(iffCommutative(thm)))
+  }
+  implicit class WrapperNIffN[P <: Formula, Q <: Formula](thm: Theorem[~[P] <-> ~[Q]]) {
+    def uninverse: Theorem[P <-> Q] = iffRemoveNot(thm)
+  }
+
+  implicit class WrapperImplies[P <: Formula, Q <: Formula](thm: Theorem[P ->: Q]) {
+    def join[R <: Formula](that: Theorem[Q ->: R]): Theorem[P ->: R] = impliesTransitive(thm, that)
+    def inverse: Theorem[~[Q] ->: ~[P]] = impliesInverse(thm)
+    def combine(that: Theorem[Q ->: P]): Theorem[P <-> Q] = impliesToIffRule(thm, that)
+  }
+  implicit class WrapperNImpliesN[P <: Formula, Q <: Formula](thm: Theorem[~[P] ->: ~[Q]]) {
+    def uninverse: Theorem[Q ->: P] = impliesUninverse(thm)
+  }
+
+  implicit class WrapperAnd[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]) {
+    def left: Theorem[P] = andExtractLeft(thm)
+    def right: Theorem[Q] = andExtractLeft(andCommutative(thm))
+    def asPair: (Theorem[P], Theorem[Q]) = (left, right)
+    def swap: Theorem[Q /\ P] = andCommutative(thm)
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
+    def toImplies: Theorem[(P ->: Q ->: False) ->: False] = andIff(thm.formula.x, thm.formula.y)(thm)
+  }
+
+  implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {
+    def left(proof: Theorem[Q ->: False]): Theorem[P] = ???
+    def right(proof: Theorem[P ->: False]): Theorem[Q] = ???
+    def swap: Theorem[Q \/ P] = orCommutative(thm)
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] = ???
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] = ???
+    def reduce[R <: Formula](left: Theorem[P ->: R])(right: Theorem[Q ->: R]): Theorem[R] = orCase(thm, left, right)
+    def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
+    def toImpliesNot: Theorem[~[P] ->: ~[Q] ->: False] = orImplies(thm)
+  }
+
+  implicit class WrapperNot[P <: Formula](thm: Theorem[~[P]]) {
+    def toImplies: Theorem[P ->: False] = notIff(thm.formula.x)(thm)
+  }
+
+  implicit class WrapperImpliesF[P <: Formula](thm: Theorem[P ->: False]) {
+    def toNot: Theorem[~[P]] = iffCommutative(notIff(thm.formula.x))(thm)
+  }
+
+  implicit class WrapperFalse(thm: Theorem[False]) {
+    def apply[P <: Formula](p: P): Theorem[P] = exFalso(p)(thm)
+  }
 
 }

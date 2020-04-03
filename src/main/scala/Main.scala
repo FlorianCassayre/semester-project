@@ -2,7 +2,7 @@ import theory.NBGTheorems
 
 object Main extends App with NBGTheorems {
 
-  val (p, q, r) = (Variable("p"), Variable("q"), Variable("r"))
+  val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
   val tpq = oops(p <-> q)
   val tp = oops(p)
   val tq = oops(q)

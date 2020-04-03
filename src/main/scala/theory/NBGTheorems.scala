@@ -13,50 +13,44 @@ trait NBGTheorems extends NBGRules {
   def equalsSubset[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (SubsetEqual[X, Y] /\ SubsetEqual[Y, X])] = {
     val ~> = assume(x === y) { xy =>
       andCombine(
-        subsetEqIff2(x, y)(toImplies(equalsIff1(x, y, SkolemFunction2[FB, X, Y](x, y))(xy))),
-        subsetEqIff2(y, x)(toImplies(equalsIff1(y, x, SkolemFunction2[FB, Y, X](y, x))(equalsSymmetric(xy))))
+        subsetEqIff2(x, y)(equalsIff1(x, y, SkolemFunction2[FB, X, Y](x, y))(xy).toImplies),
+        subsetEqIff2(y, x)(equalsIff1(y, x, SkolemFunction2[FB, Y, X](y, x))(equalsSymmetric(xy)).toImplies)
       )
     }
     val <~ = assume((x sube y) /\ (y sube x)) { sub =>
       val z = zEq(x, y)
-      val (lhs, rhs) = (subsetEqIff1(x, y, z)(andExtractLeft(sub)), subsetEqIff1(y, x, z)(andExtractLeft(andCommutative(sub))))
-      equalsIff2(x, y) {
-        val and = andCombine(lhs, rhs)
-        impliesToIff(z in x, z in y)(andExtractLeft(and))(andExtractLeft(andCommutative(and)))
-      }
+      equalsIff2(x, y)(subsetEqIff1(x, y, z)(sub.left).combine(subsetEqIff1(y, x, z)(sub.right)))
     }
 
-    impliesToIffRule(~>, <~)
+    ~> combine <~
   }
 
   /** `x = x` */
   def equalsReflexive[X <: AnySet](x: X): Theorem[X === X] =
-    equalsIff2(x, x)(iffReflexive(zEq(x, x) in x))
+    equalsIff2(x, x)((zEq(x, x) in x).reflexive)
 
   /** `y = x` given `x = y` */
   def equalsSymmetric[X <: AnySet, Y <: AnySet](thm: Theorem[X === Y]): Theorem[Y === X] = thm.formula match {
     case x === y =>
-      equalsIff2(y, x)(iffCommutative(equalsIff1(x, y, zEq(y, x))(thm)))
+      equalsIff2(y, x)(equalsIff1(x, y, zEq(y, x))(thm).swap)
   }
 
   /** `x = z` given `x = y` and `y = z` */
   def equalsTransitive[X <: AnySet, Y <: AnySet, Z <: AnySet](xy: Theorem[X === Y], yz: Theorem[Y === Z]): Theorem[X === Z] = (xy.formula, yz.formula) match {
     case (x === y1, y2 === z) if y1 == y2 =>
       val f = zEq(x, z)
-      val and = andCombine(equalsIff1(x, y1, f)(xy), equalsIff1(y1, z, f)(yz))
-
-      equalsIff2(x, z)(iffTransitive(andExtractLeft(and), andExtractLeft(andCommutative(and))))
+      equalsIff2(x, z)(equalsIff1(x, y1, f)(xy).join(equalsIff1(y1, z, f)(yz)))
   }
 
   /** `x = y <-> y = x` */
   def equalsSymmetricIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (Y === X)] =
-    impliesToIffRule(assume(x === y)(equalsSymmetric), assume(y === x)(equalsSymmetric))
+    assume(x === y)(equalsSymmetric) combine assume(y === x)(equalsSymmetric)
 
   /** `M(Y)` given `(M(Z) /\ (Z = Y))` */
   def equalsIsSet[Y <: AnySet, Z <: AnySet](thm: Theorem[IsSet[Z] /\ (Z === Y)]): Theorem[IsSet[Y]] = thm.formula match {
     case IsSet(z1) /\ (z2 === y) if z1 == z2 =>
       val f = SkolemFunction1[FC, Z](z1)
-      isSetIff2(y, f)(axiomT(z1, y, f)(andExtractLeft(andCommutative(thm)))(isSetIff1(z1)(andExtractLeft(thm))))
+      isSetIff2(y, f)(axiomT(z1, y, f)(thm.right)(isSetIff1(z1)(thm.left)))
   }
 
   /** M(x) -> M(y) -> ({x, y} = {y, x}) */
@@ -69,32 +63,28 @@ trait NBGTheorems extends NBGRules {
       def implies[A <: AnySet, B <: AnySet](ta: Theorem[IsSet[A]], tb: Theorem[IsSet[B]]): Theorem[Member[F, PairSet[A, B]] ->: Member[F, PairSet[B, A]]] = {
         val (a, b) = (ta.formula.s, tb.formula.s)
         val (iff1, iff2) = (axiomP(a, b, z)(ta)(tb)(sz), axiomP(b, a, z)(tb)(ta)(sz))
-        impliesTransitive(
-          impliesTransitive(
-            toImplies(iff1),
-            assume((z === a) \/ (z === b))(orCommutative)
-          ),
-          toImplies(iffCommutative(iff2))
-        )
+
+        iff1.toImplies join
+          assume((z === a) \/ (z === b))(orCommutative) join
+          iff2.swap.toImplies
       }
 
-      equalsIff2(xy, yx)(impliesToIffRule(implies(sx, sy), implies(sy, sx)))
+      equalsIff2(xy, yx)(implies(sx, sy) combine implies(sy, sx))
     }
   }
 
   /** `M(x) -> M(y) -> ((x in {y}) <-> (x = y))` */
   def singletonEquals[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[X, SingletonSet[Y]] <-> (X === Y))] =
     assume(IsSet(x), IsSet(y)) { (sx, sy) =>
-      iffTransitive(
-        equalsIff1(SingletonSet(y), PairSet(y, y), x)(singletonEq(y)),
-        iffTransitive(axiomP(y, y, x)(sy)(sy)(sx), impliesToIffRule(assume((x === y) \/ (x === y))(orUnduplicate), assume(x === y)(t => orAddRight(t, t.formula))))
-      )
+        equalsIff1(SingletonSet(y), PairSet(y, y), x)(singletonEq(y)) join
+        axiomP(y, y, x)(sy)(sy)(sx) join
+          (assume((x === y) \/ (x === y))(orUnduplicate) combine assume(x === y)(t => orAddRight(t, t.formula)))
     }
 
   /** `M(x) -> M(y) -> ((x in {y}) <-> (y in {x}))` */
   def singletonMembershipCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[X, SingletonSet[Y]] <-> Member[Y, SingletonSet[X]])] =
     assume(IsSet(x), IsSet(y)) { (sx, sy) =>
-      iffTransitive(iffTransitive(singletonEquals(x, y)(sx)(sy), equalsSymmetricIff(x, y)), iffCommutative(singletonEquals(y, x)(sy)(sx)))
+      singletonEquals(x, y)(sx)(sy) join equalsSymmetricIff(x, y) join singletonEquals(y, x)(sy)(sx).swap
     }
 
   /** `M(x) -> M(y) -> ({x} = {y} <-> x = y)` */
@@ -102,27 +92,22 @@ trait NBGTheorems extends NBGRules {
     assume(IsSet(x), IsSet(y)) { (sx, sy) =>
 
       val ~> = assume(SingletonSet(x) === SingletonSet(y)) { xy =>
-        iffTransitive(
-          iffTransitive(
-            iffCommutative(singletonEquals(x, x)(sx)(sx)),
-            equalsIff1(SingletonSet(x), SingletonSet(y), x)(xy)
-          ),
+        (iffCommutative(singletonEquals(x, x)(sx)(sx)) join
+          equalsIff1(SingletonSet(x), SingletonSet(y), x)(xy) join
           singletonEquals(x, y)(sx)(sy)
-        )(equalsReflexive(x))
+          )(equalsReflexive(x))
       }
 
       val <~ = assume(x === y) { xy =>
         val (f, setFa) = zEqPair(SingletonSet(x), SingletonSet(y))
-        equalsIff2(SingletonSet(x), SingletonSet(y))(iffTransitive(
-          iffTransitive(
-            singletonMembershipCommutative(f, x)(setFa)(sx),
-            axiomT(x, y, SingletonSet(f))(xy)
-          ),
-          singletonMembershipCommutative(y, f)(sy)(setFa)
-        ))
+        equalsIff2(SingletonSet(x), SingletonSet(y))(
+          singletonMembershipCommutative(f, x)(setFa)(sx) join
+            axiomT(x, y, SingletonSet(f))(xy) join
+            singletonMembershipCommutative(y, f)(sy)(setFa)
+        )
       }
 
-      impliesToIffRule(~>, <~)
+      ~> combine <~
     }
   }
 
@@ -141,13 +126,11 @@ trait NBGTheorems extends NBGRules {
   def singletonPairEqualLeft[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z):
   Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: (SingletonSet[Z] === PairSet[X, Y]) ->: (Z === X)] =
     assume(IsSet(x), IsSet(y), IsSet(z), SingletonSet(z) === PairSet(x, y)) { (sx, sy, sz, hyp) =>
-      equalsSymmetric(iffTransitive(
-        iffCommutative(axiomP(x, y, x)(sx)(sy)(sx)),
-        iffTransitive(
-          iffCommutative(equalsIff1(SingletonSet(z), PairSet(x, y), x)(hyp)),
+      equalsSymmetric((
+        iffCommutative(axiomP(x, y, x)(sx)(sy)(sx)) join
+          iffCommutative(equalsIff1(SingletonSet(z), PairSet(x, y), x)(hyp)) join
           singletonEquals(x, z)(sx)(sz)
-        )
-      )(orAddRight(equalsReflexive(x), x === y)))
+        )(equalsReflexive(x) #\/ (x === y)))
     }
 
   /** `M(x) -> M(y) -> M(u) -> M(v) -> <x, y> = <u, v> -> (x = u /\ y = v)` */

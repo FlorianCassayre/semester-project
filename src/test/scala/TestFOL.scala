@@ -54,11 +54,6 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
     assert(impliesDistribute(p, q, r).formula == (p ->: q ->: r) ->: (p ->: q) ->: (p ->: r))
   }
 
-  test("general modus ponens") {
-    assert(impliesModusPonens(p ->: q, p).formula == q)
-    assert(iffModusPonens(p <-> q, p).formula == q)
-  }
-
   test("iff to implies") {
     assert(toImplies(p <-> q).formula == p ->: q)
   }

@@ -55,8 +55,4 @@ trait FOLRules extends FOL {
     Axiom(p ->: q, dirty, newRefs)
   }
 
-  // --
-
-  override def impliesModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q] = modusPonens(pq, p)
-  override def iffModusPonens[P <: Formula, Q <: Formula](pq: Theorem[P <-> Q], p: Theorem[P]): Theorem[Q] = modusPonens(modusPonens(iffToImplies1(pq.formula.x, pq.formula.y), pq), p)
 }
