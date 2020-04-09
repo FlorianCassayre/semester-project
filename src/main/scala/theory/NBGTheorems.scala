@@ -53,6 +53,24 @@ trait NBGTheorems extends NBGRules {
       isSetIff2(y, f)(axiomT(z1, y, f)(thm.right)(isSetIff1(z1)(thm.left)))
   }
 
+  implicit class WrapperEquals[X <: AnySet, Y <: AnySet](thm: Theorem[X === Y]) {
+    private val (x, y) = (thm.a, thm.b)
+    def join[Z <: AnySet](that: Theorem[Y === Z]): Theorem[X === Z] = equalsTransitive(thm, that)
+    def swap: Theorem[Y === X] = equalsSymmetric(thm)
+    def toImplies[Z <: AnySet](z: Z): Theorem[Member[Z, X] <-> Member[Z, Y]] = equalsIff1(x, y, z)(thm)
+  }
+
+  implicit class WrapperAnySet[X <: AnySet](x: X) {
+    def reflexive: Theorem[X === X] = equalsReflexive(x)
+  }
+
+  implicit class WrapperIffEquals[X <: AnySet, Y <: AnySet](thm: Theorem[Member[SkolemFunction2[FA, X, Y], X] <-> Member[SkolemFunction2[FA, X, Y], Y]]) {
+    private val (x, y) = thm.formula match {
+      case Member(_, x) <-> Member(_, y) => (x, y)
+    }
+    def toEquals: Theorem[X === Y] = equalsIff2(x, y)(thm)
+  }
+
   /** M(x) -> M(y) -> ({x, y} = {y, x}) */
   def pairCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (PairSet[X, Y] === PairSet[Y, X])] = {
     type F = ZEq[PairSet[X, Y], PairSet[Y, X]]
@@ -475,5 +493,36 @@ trait NBGTheorems extends NBGRules {
 
   /** `x union (y inter z) = (x union y) inter (x union z)` */
   def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Intersect[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
+
+
+  /** `U({}) = {}` */
+  def sumEmpty: Theorem[Sum[EmptySet] === EmptySet] = {
+    val (z, sz) = zEqPair(Sum(EmptySet), EmptySet)
+    val sq = isSetQ(EmptySet, z)
+
+    val ~> = assume(z in Sum(EmptySet))(hyp => axiomN(sq.s)(sq).toImplies(sumIff1(EmptySet, z)(sz)(hyp).right)(z in EmptySet))
+    val <~ = assume(z in EmptySet)(hyp => axiomN(z)(sz).toImplies(hyp)(z in Sum(EmptySet)))
+
+    (~> combine <~).toEquals
+  }
+
+  /** `M(x) -> U({x}) = x` */
+  def sumSingleton[X <: AnySet](x: X): Theorem[IsSet[X] ->: (Sum[SingletonSet[X]] === X)] = assume(IsSet(x)) { sx =>
+    val (z, sz) = zEqPair(Sum(SingletonSet(x)), x)
+    val sq = isSetQ(SingletonSet(x), z)
+
+    val ~> = assume(z in Sum(SingletonSet(x))) { hyp =>
+      val (zq, qsx) = sumIff1(SingletonSet(x), z)(sz)(hyp).asPair
+      singletonEquals(sq.s, x)(sq)(sx)(qsx).toImplies(z)(zq)
+    }
+    val <~ = assume(z in x)(hyp => sumIff2(SingletonSet(x), x, z)(singletonIsSet(sx))(sz)(hyp #/\ singletonEquals(x, x)(sx)(sx).swap(x.reflexive)))
+
+    (~> combine <~).toEquals
+  }
+
+  /** `Sum({}) = {}` */
+  def sumSingletonEmpty: Theorem[Sum[SingletonSet[EmptySet]] === EmptySet] = sumSingleton(EmptySet)(axiomNS) // Corollary
+
+  def sumUniverse: Theorem[Sum[Universe] === Universe] = ???
 
 }

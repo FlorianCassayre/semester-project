@@ -44,9 +44,16 @@ trait NBGTheory extends FOLTheorems {
   case object Universe extends AnySet
   type Universe = Universe.type
 
+  case class Product[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
+  case class Relation[A <: AnySet](a: A) extends Formula
+  case class Power[A <: AnySet](a: A) extends AnySet
+  case class Sum[A <: AnySet](a: A) extends AnySet
+
   case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit v: ValueOf[I]) extends AnySet
+  case class SkolemFunction3[I <: Id, A <: AnySet, B <: AnySet, C <: AnySet](a: A, b: B, c: C)(implicit v: ValueOf[I]) extends AnySet
+
 
   final class ExtendedSet[S <: AnySet](set: S) {
     // http://asciimath.org/
@@ -58,6 +65,7 @@ trait NBGTheory extends FOLTheorems {
     def unary_- : -[S] = Complement(set)
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
     def diff[T <: AnySet](that: T): Difference[S, T] = Difference(set, that)
+    def *[T <: AnySet](that: T): Product[S, T] = Product(set, that)
   }
   implicit def setToExtended[S <: AnySet](set: S): ExtendedSet[S] = new ExtendedSet[S](set)
 

@@ -56,6 +56,9 @@ trait FOLTheorems extends FOLRules {
     impliesToIff(q, p)(iffToImplies2(p, q)(thm))(iffToImplies1(p, q)(thm))
   }
 
+  /** `true` */
+  def truth: Theorem[True] = iffCommutative(trueIff)(assume(False)(identity))
+
   /** `(q /\ p)` given `(p /\ q)` */
   def andCommutative[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]): Theorem[Q /\ P] = thm.formula match {
     case p /\ q =>
@@ -289,6 +292,7 @@ trait FOLTheorems extends FOLRules {
     def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
     def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
     def toImplies: Theorem[(P ->: Q ->: False) ->: False] = andIff(thm.formula.x, thm.formula.y)(thm)
+    def toIff: Theorem[P <-> Q] = andToIff(thm)
   }
 
   implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {

@@ -76,6 +76,8 @@ trait NBGRules extends NBGTheory {
   def axiomB1[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[OrderedPair[X, Y], SkolemConstant[FD]] <-> Member[X, Y])] =
     Axiom(IsSet(x) ->: IsSet(y) ->: ((OrderedPair(x, y) in SkolemConstant[FD]) <-> (x in y)))
 
+  // TODO B*
+
   // --
 
   /** `M(z) -> (z in (x inter y)) <-> ((z in x) /\ (z in y))` */
@@ -108,5 +110,43 @@ trait NBGRules extends NBGTheory {
   /** `x diff y = x inter -y` */
   def differenceIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Difference[X, Y] === Intersect[X, -[Y]]] =
     Axiom((x diff y) === (x inter -y))
+
+  type FP1 = "p1"
+  def isSetP1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[SkolemFunction3[FP1, X, Y, Z]]] = Axiom(IsSet(SkolemFunction3[FP1, X, Y, Z](x, y, z)))
+  type FP2 = "p2"
+  def isSetP2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[SkolemFunction3[FP2, X, Y, Z]]] = Axiom(IsSet(SkolemFunction3[FP2, X, Y, Z](x, y, z)))
+
+  /** `TODO` */
+  def productIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z):
+  Theorem[IsSet[Z] ->: Member[Z, Product[X, Y]] ->: ((X === OrderedPair[SkolemFunction3[FP1, X, Y, Z], SkolemFunction3[FP2, X, Y, Z]]) /\ Member[SkolemFunction3[FP1, X, Y, Z], X] /\ Member[SkolemFunction3[FP2, X, Y, Z], Y])] = {
+    val (u, v) = (SkolemFunction3[FP1, X, Y, Z](x, y, z), SkolemFunction3[FP2, X, Y, Z](x, y, z))
+    Axiom(IsSet(z) ->: (z in x * y) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)))
+  }
+
+  /** `TODO` */
+  def productIff2[X <: AnySet, Y <: AnySet, Z <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, z: Z, u: U, v: V):
+  Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: ((X === OrderedPair[U, V]) /\ Member[U, X] /\ Member[V, Y]) ->: Member[Z, Product[X, Y]]] =
+    Axiom(IsSet(x) ->: IsSet(y) ->: IsSet(z) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)) ->: (z in x * y))
+
+  /** `Rel(x) <-> (x in U * U)` */
+  def relationIff[X <: AnySet](x: X): Theorem[Relation[X] <-> SubsetEqual[X, Product[Universe, Universe]]] =
+    Axiom(Relation(x) <-> (x sube Universe * Universe))
+
+  /** `M(x) -> ((x in P(y)) <-> (x sube y))` */
+  def powerIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: (Member[X, Power[Y]] <-> SubsetEqual[X, Y])] =
+    Axiom(IsSet(x) ->: ((x in Power(y)) <-> (x sube y)))
+
+  type FQ = "q"
+  def isSetQ[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[SkolemFunction2[FQ, X, Y]]] = Axiom(IsSet(SkolemFunction2[FQ, X, Y](x, y)))
+
+  /** `M(z) -> (z in U(x)) -> ((z in q(x, z) /\ (q(x, z) in x))` */
+  def sumIff1[X <: AnySet, Z <: AnySet](x: X, z: Z): Theorem[IsSet[Z] ->: Member[Z, Sum[X]] ->: (Member[Z, SkolemFunction2[FQ, X, Z]] /\ Member[SkolemFunction2[FQ, X, Z], X])] = {
+    val v = SkolemFunction2[FQ, X, Z](x, z)
+    Axiom(IsSet(z) ->: (z in Sum(x)) ->: ((z in v) /\ (v in x)))
+  }
+
+  /** `M(x) -> M(z) -> ((z in y) /\ (y in x)) -> (z in U(x))` */
+  def sumIff2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[X] ->: IsSet[Z] ->: (Member[Z, Y] /\ Member[Y, X]) ->: Member[Z, Sum[X]]] =
+    Axiom(IsSet(x) ->: IsSet(z) ->: ((z in y) /\ (y in x)) ->: (z in Sum(x)))
 
 }
