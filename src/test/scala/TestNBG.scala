@@ -85,11 +85,11 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(subsetIntersect(x, y).formula == ((x sube y) <-> ((x inter y) === x)))
   }
 
-  ignore("subset union") {
+  test("subset union") {
     assert(subsetUnion(x, y).formula == ((x sube y) <-> ((x union y) === y)))
   }
 
-  ignore("intersection associative") {
+  test("intersection associative") {
     assert(intersectAssociative(x, y, z).formula == (((x inter y) inter z) === (x inter (y inter z))))
   }
 
@@ -121,8 +121,8 @@ class TestNBG extends AnyFunSuite with NBGTheorems {
     assert(unionUniverse(x).formula == ((x union Universe) === Universe))
   }
 
-  ignore("union complement") {
-    assert(unionComplement(x, y).formula == (-(x union y) === (-x union -y)))
+  test("union complement") {
+    assert(unionComplement(x, y).formula == (-(x union y) === (-x inter -y)))
   }
 
   ignore("intersection complement") {

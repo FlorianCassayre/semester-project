@@ -46,6 +46,14 @@ trait NBGTheorems extends NBGRules {
   def equalsSymmetricIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (Y === X)] =
     assume(x === y)(equalsSymmetric) combine assume(y === x)(equalsSymmetric)
 
+  /** `(x = y) <-> (a(x, y) in x <-> a(x, y) in y)` */
+  def equalsAllIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[(X === Y) <-> (Member[SkolemFunction2[FA, X, Y], X] <-> Member[SkolemFunction2[FA, X, Y], Y])] = {
+    val z = zEq(x, y)
+    val ~> = equalsIff1(x, y, z)
+    val <~ = equalsIff2(x, y)
+    ~> combine <~
+  }
+
   /** `M(Y)` given `(M(Z) /\ (Z = Y))` */
   def equalsIsSet[Y <: AnySet, Z <: AnySet](thm: Theorem[IsSet[Z] /\ (Z === Y)]): Theorem[IsSet[Y]] = thm.formula match {
     case IsSet(z1) /\ (z2 === y) if z1 == z2 =>
@@ -292,6 +300,38 @@ trait NBGTheorems extends NBGRules {
     impliesToIffRule(~>, <~)
   }
 
+  implicit class WrapperIntersect[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Intersect[X, Y]]]) {
+    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] /\ Member[Z, Y]] = intersectIff(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+  }
+
+  implicit class WrapperUnion[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Union[X, Y]]]) {
+    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] \/ Member[Z, Y]] = unionContains(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+  }
+
+  implicit class WrapperDifference[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Difference[X, Y]]]) {
+    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] /\ ~[Member[Z, Y]]] = differenceContains(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+  }
+
+  implicit class WrapperComplement[X <: AnySet, Y <: AnySet](thm: Theorem[Member[Y, Complement[X]]]) {
+    def toIff(sy: Theorem[IsSet[Y]]): Theorem[~[Member[Y, X]]] = complementIff(thm.b.a, thm.a)(sy)(thm)
+  }
+
+  implicit class WrapperIntersectIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] /\ Member[Z, Y]]) {
+    def toIntersect(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Intersect[X, Y]]] = intersectIff(thm.x.b, thm.y.b, thm.x.a)(sz).swap(thm)
+  }
+
+  implicit class WrapperUnionIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] \/ Member[Z, Y]]) {
+    def toIntersect(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Union[X, Y]]] = unionContains(thm.x.b, thm.y.b, thm.x.a)(sz).swap(thm)
+  }
+
+  implicit class WrapperDifferenceIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] /\ ~[Member[Z, Y]]]) {
+    def toIntersect(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Difference[X, Y]]] = differenceContains(thm.x.b, thm.y.x.b, thm.x.a)(sz).swap(thm)
+  }
+
+  implicit class WrapperComplementIff[X <: AnySet, Y <: AnySet](thm: Theorem[~[Member[Y, X]]]) {
+    def toIntersect(sy: Theorem[IsSet[Y]]): Theorem[Member[Y, Complement[X]]] = complementIff(thm.x.b, thm.x.a)(sy).swap(thm)
+  }
+
   /** `(x inter y) = (y inter x)` */
   def intersectCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Intersect[X, Y] === Intersect[Y, X]] = {
     type C = ZEq[Intersect[X, Y], Intersect[Y, X]]
@@ -370,10 +410,38 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `x sube y <-> (x union y = y)` */
-  def subsetUnion[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] <-> (Union[X, Y] === Y)] = ???
+  def subsetUnion[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] <-> (Union[X, Y] === Y)] = {
+    val ~> = assume(x sube y) { hyp =>
+      val (z, sz) = zEqPair(x union y, y)
+      val ~> = assume((z in x) \/ (z in y))(_.reduce(subsetEqIff1(x, y, z)(hyp))(assume(z in y)(identity)))
+      val <~ = assume(z in y)((z in x) #\/ _)
+      (unionContains(x, y, z)(sz) join (~> combine <~)).toEquals
+    }
+    val <~ = assume((x union y) === y) { hyp =>
+      val (z, sz) = (SkolemFunction2[FB, X, Y](x, y), isSetFb(x, y))
+      subsetEqIff2(x, y)(assume(z in x)(h => (unionContains(x, y, z)(sz).swap join hyp.toImplies(z))(h #\/ (z in y))))
+    }
+
+    ~> combine <~
+  }
 
   /** `(x inter y) inter z = x inter (y inter z)` */
-  def intersectAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[Intersect[X, Y], Z] === Intersect[X, Intersect[Y, Z]]] = ???
+  def intersectAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[Intersect[X, Y], Z] === Intersect[X, Intersect[Y, Z]]] = {
+    val (w, sw) = zEqPair((x inter y) inter z, x inter (y inter z))
+
+    val ~> = assume(w in ((x inter y) inter z)) { hyp =>
+      val (txy, tz) = intersectIff(x inter y, z, w)(sw)(hyp).asPair
+      val (tx, ty) = intersectIff(x, y, w)(sw)(txy).asPair
+      intersectIff(x, y inter z, w)(sw).swap(tx #/\ intersectIff(y, z, w)(sw).swap(ty #/\ tz))
+    }
+    val <~ = assume(w in (x inter (y inter z))) { hyp =>
+      val (tx, tyz) = intersectIff(x, y inter z, w)(sw)(hyp).asPair
+      val (ty, tz) = intersectIff(y, z, w)(sw)(tyz).asPair
+      intersectIff(x inter y, z, w)(sw).swap(intersectIff(x, y, w)(sw).swap(tx #/\ ty) #/\ tz)
+    }
+
+    (~> combine <~).toEquals
+  }
 
   /** `(x union y) union z = x union (y union z)` */
   def unionAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[Union[X, Y], Z] === Union[X, Union[Y, Z]]] = ???
@@ -442,11 +510,44 @@ trait NBGTheorems extends NBGRules {
     equalsIff2(x union Universe, Universe)(iffTransitive(unionContains(x, Universe, z)(sz), impliesToIffRule(~>, <~)))
   }
 
-  /** `-(x union y) = (-x union -y)` */
-  def unionComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Union[X, Y]] === Union[-[X], -[Y]]] = ???
+  /** `-(x union y) = (-x inter -y)` */
+  def unionComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Union[X, Y]] === Intersect[-[X], -[Y]]] = {
+    val (z, sz) = zEqPair(-(x union y), -x inter -y)
+
+    val ~> = assume(z in -(x union y)) { hyp =>
+      val t = unionContains(x, y, z)(sz).swap.toImplies join complementIff(x union y, z)(sz)(hyp).toImplies
+      val l = complementIff(x, z)(sz).swap(assume(z in x)(h => t(h #\/ (z in y))).toNot)
+      val r = complementIff(y, z)(sz).swap(assume(z in y)(h => t((z in x) #\/ h)).toNot)
+      intersectIff(-x, -y, z)(sz).swap(l #/\ r)
+    }
+    val <~ = assume(z in (-x inter -y)) { hyp =>
+      val (l, r) = intersectIff(-x, -y, z)(sz)(hyp).asPair
+      val la = complementIff(x, z)(sz)(l)
+      val ra = complementIff(y, z)(sz)(r)
+      complementIff(x union y, z)(sz).swap((unionContains(x, y, z)(sz).toImplies join orIff(z in x, z in y).toImplies join #~~(la #/\ ra).toImplies).toNot)
+    }
+
+    (~> combine <~).toEquals
+  }
 
   /** `-(x inter y) = (-x union -y)` */
-  def intersectComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Intersect[X, Y]] === Union[-[X], -[Y]]] = ???
+  def intersectComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Intersect[X, Y]] === Union[-[X], -[Y]]] = {
+    val (z, sz) = zEqPair(-(x union y), -x inter -y)
+
+    val ~> = assume(z in -(x inter y)) { hyp =>
+      val t1 = hyp.toIff(sz).map(intersectIff(x, y, z)(sz).swap.toImplies).toImplies
+      ???
+    }
+    val <~ = assume(z in (-x union -y)) { hyp =>
+      val t1 = hyp.toIff(sz).mapLeft(complementIff(x, z)(sz).toImplies).mapRight(complementIff(y, z)(sz).toImplies)
+      val t2 = orImplies(t1)
+      val t3 = assume(z in x)(zx => assume(z in y)(zy => t2(#~~(zx))(#~~(zy))))
+      ???
+    }
+
+    //(~> combine <~).toEquals
+    ???
+  }
 
   /** `(x diff x) = {}` */
   def differenceSelf[X <: AnySet](x: X): Theorem[Difference[X, X] === EmptySet] = {
@@ -523,6 +624,122 @@ trait NBGTheorems extends NBGRules {
   /** `Sum({}) = {}` */
   def sumSingletonEmpty: Theorem[Sum[SingletonSet[EmptySet]] === EmptySet] = sumSingleton(EmptySet)(axiomNS) // Corollary
 
-  def sumUniverse: Theorem[Sum[Universe] === Universe] = ???
+  /** `U(V) = V` */
+  def sumUniverse: Theorem[Sum[Universe] === Universe] = {
+    ??? // TODO: unprovable
+  }
 
+  /** `P(V) = V` */
+  def powerUniverse: Theorem[Power[Universe] === Universe] = ??? // TODO: also unprovable
+
+
+  /** `x sube x` */
+  def subsetEqReflexive[X <: AnySet](x: X): Theorem[SubsetEqual[X, X]] = {
+    val z = isSetFb(x, x).s
+    subsetEqIff2(x, x)(assume(z in x)(identity))
+  }
+
+  /** `{} sube x` */
+  def emptySubsetEq[X <: AnySet](x: X): Theorem[SubsetEqual[EmptySet, X]] = {
+    val sz = isSetFb(EmptySet, x)
+    val z = sz.s
+    subsetEqIff2(EmptySet, x)(assume(z in EmptySet)(hyp => axiomN(z)(sz).toImplies(hyp)(z in x)))
+  }
+
+  /** `x sube {} <-> x = {}` */
+  def subsetEqEmpty[X <: AnySet](x: X): Theorem[SubsetEqual[X, EmptySet] <-> (X === EmptySet)] = {
+    val ~> = assume(x sube EmptySet) { hyp =>
+      val (z, sz) = zEqPair(x, EmptySet)
+      val ~> = subsetEqIff1(x, EmptySet, z)(hyp)
+      val <~ = assume(z in EmptySet)(h => axiomN(z)(sz).toImplies(h)(z in x))
+      (~> combine <~).toEquals
+    }
+    val <~ = assume(x === EmptySet) { hyp =>
+      val z = isSetFb(x, EmptySet).s
+      subsetEqIff2(x, EmptySet)(hyp.toImplies(z).toImplies)
+    }
+
+    ~> combine <~
+  }
+
+  /** `(x sube y) -> (y sube z) -> (x sube z)` */
+  def subsetEqTransitivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[SubsetEqual[X, Y] ->: SubsetEqual[Y, Z] ->: SubsetEqual[X, Z]] = assume(x sube y, y sube z) { (xy, yz) =>
+    val sb = isSetFb(x, z)
+    val b = sb.s
+    subsetEqIff2(x, z)(subsetEqIff1(x, y, b)(xy) join subsetEqIff1(y, z, b)(yz))
+  }
+
+  /** `M(x) -> (x in P(x))` */
+  def powerMonoticity[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, Power[X]]] = assume(IsSet(x)) { sx =>
+    powerIff(x, x)(sx).swap(subsetEqReflexive(x))
+  }
+
+  /** `M(y) -> (x sube y) -> (U(x) sube U(y))` */
+  def sumSubsetEqMonotonicity[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[Y] ->: SubsetEqual[X, Y] ->: SubsetEqual[Sum[X], Sum[Y]]] = assume(IsSet(y), x sube y) { (sy, hyp) =>
+    val sb = isSetFb(Sum(x), Sum(y))
+    val b = sb.s
+    val sq = isSetQ(x, b)
+    val q = sq.s
+    subsetEqIff2(Sum(x), Sum(y))(assume(b in Sum(x))(h => sumIff2(y, q, b)(sy)(sb)(sumIff1(x, b)(sb)(h).mapRight(subsetEqIff1(x, y, q)(hyp)))))
+  }
+
+  /** `U(P(x)) = x` */
+  def sumPower[X <: AnySet](x: X): Theorem[IsSet[X] ->: (Sum[Power[X]] === X)] = assume(IsSet(x)) { sx =>
+    val (z, sz) = zEqPair(Sum(Power(x)), x)
+
+    val ~> = assume(z in Sum(Power(x))) { hyp =>
+      val (zq, qpx) = sumIff1(Power(x), z)(sz)(hyp).asPair
+      val sq = isSetQ(Power(x), z)
+      val q = sq.s
+      subsetEqIff1(q, x, z)(powerIff(q, x)(sq)(qpx))(zq)
+    }
+    val <~ = assume(z in x) { hyp =>
+      sumIff2(Power(x), x, z)(isSetPower(x)(sx))(sz)(hyp #/\ powerMonoticity(x)(sx))
+    }
+
+    (~> combine <~).toEquals
+  }
+
+  /** `P({}) = {{}}` */
+  def powerEmpty: Theorem[Power[EmptySet] === SingletonSet[EmptySet]] = {
+    val (z, sz) = zEqPair(Power(EmptySet), SingletonSet(EmptySet))
+    (powerIff(z, EmptySet)(sz) join subsetEqEmpty(z) join singletonEquals(z, EmptySet)(sz)(axiomNS).swap).toEquals
+  }
+
+  /** `P({{}}) = {{}, {{}}}` */
+  def powerSingletonEmpty: Theorem[Power[SingletonSet[EmptySet]] === PairSet[EmptySet, SingletonSet[EmptySet]]] = {
+    val (z, sz) = zEqPair(Power(SingletonSet(EmptySet)), PairSet(EmptySet, SingletonSet(EmptySet)))
+
+    val ~> = assume(z in Power(SingletonSet(EmptySet))) { hyp =>
+      val (z2, sz2) = zEqPair(z, SingletonSet(EmptySet))
+
+      val t1 = powerIff(z, SingletonSet(EmptySet))(sz)(hyp)
+      val l = subsetEqIff1(z, SingletonSet(EmptySet), z2)(t1) join singletonEquals(z2, EmptySet)(sz2)(axiomNS).toImplies
+
+      assume(~(z === EmptySet)) { h1 =>
+        assume(~(z === SingletonSet(EmptySet))) { h2 =>
+          val t1 = powerIff(z, SingletonSet(EmptySet))(sz)(hyp)
+          val l = subsetEqIff1(z, SingletonSet(EmptySet), z2)(t1) join singletonEquals(z2, EmptySet)(sz2)(axiomNS).toImplies
+
+          ???
+        }
+      }
+
+      oops(z in PairSet(EmptySet, SingletonSet(EmptySet)))
+    }
+    val <~ = assume(z in PairSet(EmptySet, SingletonSet(EmptySet))) { hyp =>
+      val sb = isSetFb(z, SingletonSet(EmptySet))
+      val b = sb.s
+
+      val ~> = assume(b in z) { h1 =>
+        val l = assume(z === EmptySet)(h2 => axiomN(b)(sb).toImplies(h2.toImplies(b)(h1))(b in SingletonSet(EmptySet)))
+        val r = assume(z === SingletonSet(EmptySet))(h2 => h2.toImplies(b)(h1))
+        axiomP(EmptySet, SingletonSet(EmptySet), z)(axiomNS)(singletonIsSet(axiomNS))(sz)(hyp).reduce(l)(r)
+      }
+      powerIff(z, SingletonSet(EmptySet))(sz).swap(subsetEqIff2(z, SingletonSet(EmptySet))(~>))
+    }
+
+    //(~> combine <~).toEquals
+    ???
+  }
 }

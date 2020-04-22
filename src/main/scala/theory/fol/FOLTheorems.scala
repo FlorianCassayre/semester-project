@@ -190,6 +190,12 @@ trait FOLTheorems extends FOLRules {
       assume(~p, ~q)((np, nq) => notIff(~p /\ ~q)(orIff(p, q)(pq))(andCombine(np, nq)))
   }
 
+  /** `p \/ q` given `~p -> ~q -> false` */
+  def impliesOr[P <: Formula, Q <: Formula](pqf: Theorem[~[P] ->: ~[Q] ->: False]): Theorem[P \/ Q] = pqf.formula match {
+    case ~(p) ->: ~(q) ->: False =>
+      orIff(p, q).swap(#~~(pqf).map(notIff(~p ->: ~q ->: False).swap.toImplies).map(andIff(~p, ~q).toImplies))
+  }
+
   /** `r` given `p \/ q`, `p -> r` and `q -> r` */
   def orCase[P <: Formula, Q <: Formula, R <: Formula](pq: Theorem[P \/ Q], pr: Theorem[P ->: R], qr: Theorem[Q ->: R]): Theorem[R] =
     (pq.formula, pr.formula, qr.formula) match {
@@ -224,6 +230,21 @@ trait FOLTheorems extends FOLRules {
       impliesToIffRule(assume(p)(_ => andExtractLeft(andCommutative(thm))), assume(q)(_ => andExtractLeft(thm)))
   }
 
+  /** `((p /\ q) /\ r) <-> (p /\ (q /\ r))` */
+  def andAssociativeIff[P <: Formula, Q <: Formula, R <: Formula](p: P, q: Q, r: R): Theorem[((P /\ Q) /\ R) <-> ((P /\ (Q /\ R)))] = {
+    val ~> = assume((p /\ q) /\ r) { hyp =>
+      val (tpq, tr) = (andExtractLeft(hyp), andExtractLeft(andCommutative(hyp)))
+      val (tp, tq) = (andExtractLeft(tpq), andExtractLeft(andCommutative(tpq)))
+      andCombine(tp, andCombine(tq, tr))
+    }
+    val <~ = assume(p /\ (q /\ r)) { hyp =>
+      val (tp, tqr) = (andExtractLeft(hyp), andExtractLeft(andCommutative(hyp)))
+      val (tq, tr) = (andExtractLeft(tqr), andExtractLeft(andCommutative(tqr)))
+      andCombine(andCombine(tp, tq), tr)
+    }
+    impliesToIffRule(~>, <~)
+  }
+
   // --
 
   def assume[P1 <: Formula, P2 <: Formula, Q <: Formula](p1: P1, p2: P2)(certificate: (Theorem[P1], Theorem[P2]) => Theorem[Q]): Theorem[P1 ->: P2 ->: Q] =
@@ -244,6 +265,10 @@ trait FOLTheorems extends FOLRules {
   // --
 
   implicit def theoremToFormula[F <: Formula](thm: Theorem[F]): F = thm.formula
+
+  //implicit def functionToTheorem[P <: Formula, Q <: Formula](f: P => Theorem[Q]): Theorem[P ->: Q] = assume(p)
+
+  def #~~[P <: Formula](thm: Theorem[P]): Theorem[~[~[P]]] = notDuplicate(thm)
 
   implicit class WrapperFormula[P <: Formula](f: P) {
     def #\/[Q <: Formula](that: Theorem[Q]): Theorem[P \/ Q] = orCommutative(orAddRight(that, f))
@@ -295,6 +320,14 @@ trait FOLTheorems extends FOLRules {
     def toIff: Theorem[P <-> Q] = andToIff(thm)
   }
 
+  implicit class WrapperAndParen1[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[(P /\ Q) /\ R]) {
+    def rearrange: Theorem[P /\ (Q /\ R)] = andAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
+  }
+
+  implicit class WrapperAndParen2[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[P /\ (Q /\ R)]) {
+    def rearrange: Theorem[(P /\ Q) /\ R] = andAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
+  }
+
   implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {
     def left(proof: Theorem[Q ->: False]): Theorem[P] = ???
     def right(proof: Theorem[P ->: False]): Theorem[Q] = ???
@@ -308,6 +341,11 @@ trait FOLTheorems extends FOLRules {
 
   implicit class WrapperNot[P <: Formula](thm: Theorem[~[P]]) {
     def toImplies: Theorem[P ->: False] = notIff(thm.formula.x)(thm)
+    def map[Q <: Formula](map: Theorem[Q ->: P]): Theorem[~[Q]] = map.inverse(thm)
+  }
+
+  implicit class WrapperNotNot[P <: Formula](thm: Theorem[~[~[P]]]) {
+    def unduplicate: Theorem[P] = notUnduplicate(thm)
   }
 
   implicit class WrapperImpliesF[P <: Formula](thm: Theorem[P ->: False]) {

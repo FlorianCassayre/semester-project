@@ -136,6 +136,9 @@ trait NBGRules extends NBGTheory {
   def powerIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: (Member[X, Power[Y]] <-> SubsetEqual[X, Y])] =
     Axiom(IsSet(x) ->: ((x in Power(y)) <-> (x sube y)))
 
+  /** `M(x) -> M(P(x))` */
+  def isSetPower[X <: AnySet](x: X): Theorem[IsSet[X] ->: IsSet[Power[X]]] = Axiom(IsSet(x) ->: IsSet(Power(x)))
+
   type FQ = "q"
   def isSetQ[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[SkolemFunction2[FQ, X, Y]]] = Axiom(IsSet(SkolemFunction2[FQ, X, Y](x, y)))
 
