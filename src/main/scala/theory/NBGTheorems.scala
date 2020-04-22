@@ -616,7 +616,7 @@ trait NBGTheorems extends NBGRules {
       val (zq, qsx) = sumIff1(SingletonSet(x), z)(sz)(hyp).asPair
       singletonEquals(sq.s, x)(sq)(sx)(qsx).toImplies(z)(zq)
     }
-    val <~ = assume(z in x)(hyp => sumIff2(SingletonSet(x), x, z)(singletonIsSet(sx))(sz)(hyp #/\ singletonEquals(x, x)(sx)(sx).swap(x.reflexive)))
+    val <~ = assume(z in x)(hyp => sumIff2(SingletonSet(x), x, z)(sx)(sz)(hyp #/\ singletonEquals(x, x)(sx)(sx).swap(x.reflexive)))
 
     (~> combine <~).toEquals
   }
@@ -626,11 +626,27 @@ trait NBGTheorems extends NBGRules {
 
   /** `U(V) = V` */
   def sumUniverse: Theorem[Sum[Universe] === Universe] = {
-    ??? // TODO: unprovable
+    val (z, sz) = zEqPair(Sum(Universe), Universe)
+
+    val ~> = assume(z in Sum(Universe))(_ => universeContains(z)(sz))
+    val <~ = assume(z in Universe) { _ =>
+      val y = SingletonSet(z)
+      val sy = singletonIsSet(sz)
+      sumIff2(Universe, y, z)(sy)(sz)(singletonEquals(z, z)(sz)(sz).swap(z.reflexive) #/\ universeContains(y)(sy))
+    }
+
+    (~> combine <~).toEquals
   }
 
   /** `P(V) = V` */
-  def powerUniverse: Theorem[Power[Universe] === Universe] = ??? // TODO: also unprovable
+  def powerUniverse: Theorem[Power[Universe] === Universe] = {
+    val (z, sz) = zEqPair(Power(Universe), Universe)
+
+    val ~> = assume(z in Power(Universe))(_ => universeContains(z)(sz))
+    val <~ = assume(z in Universe)(_ => powerIff(z, Universe)(sz).swap(subsetEqUniverse(z)))
+
+    (~> combine <~).toEquals
+  }
 
 
   /** `x sube x` */
@@ -662,6 +678,13 @@ trait NBGTheorems extends NBGRules {
     ~> combine <~
   }
 
+  /** `x sube U` */
+  def subsetEqUniverse[X <: AnySet](x: X): Theorem[SubsetEqual[X, Universe]] = {
+    val sb = isSetFb(x, Universe)
+    val b = sb.s
+    subsetEqIff2(x, Universe)(assume(b in x)(_ => universeContains(b)(sb)))
+  }
+
   /** `(x sube y) -> (y sube z) -> (x sube z)` */
   def subsetEqTransitivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[SubsetEqual[X, Y] ->: SubsetEqual[Y, Z] ->: SubsetEqual[X, Z]] = assume(x sube y, y sube z) { (xy, yz) =>
     val sb = isSetFb(x, z)
@@ -680,7 +703,7 @@ trait NBGTheorems extends NBGRules {
     val b = sb.s
     val sq = isSetQ(x, b)
     val q = sq.s
-    subsetEqIff2(Sum(x), Sum(y))(assume(b in Sum(x))(h => sumIff2(y, q, b)(sy)(sb)(sumIff1(x, b)(sb)(h).mapRight(subsetEqIff1(x, y, q)(hyp)))))
+    subsetEqIff2(Sum(x), Sum(y))(assume(b in Sum(x))(h => sumIff2(y, q, b)(sq)(sb)(sumIff1(x, b)(sb)(h).mapRight(subsetEqIff1(x, y, q)(hyp)))))
   }
 
   /** `U(P(x)) = x` */
@@ -694,7 +717,7 @@ trait NBGTheorems extends NBGRules {
       subsetEqIff1(q, x, z)(powerIff(q, x)(sq)(qpx))(zq)
     }
     val <~ = assume(z in x) { hyp =>
-      sumIff2(Power(x), x, z)(isSetPower(x)(sx))(sz)(hyp #/\ powerMonoticity(x)(sx))
+      sumIff2(Power(x), x, z)(sx)(sz)(hyp #/\ powerMonoticity(x)(sx))
     }
 
     (~> combine <~).toEquals

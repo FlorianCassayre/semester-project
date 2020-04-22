@@ -136,9 +136,6 @@ trait NBGRules extends NBGTheory {
   def powerIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: (Member[X, Power[Y]] <-> SubsetEqual[X, Y])] =
     Axiom(IsSet(x) ->: ((x in Power(y)) <-> (x sube y)))
 
-  /** `M(x) -> M(P(x))` */
-  def isSetPower[X <: AnySet](x: X): Theorem[IsSet[X] ->: IsSet[Power[X]]] = Axiom(IsSet(x) ->: IsSet(Power(x)))
-
   type FQ = "q"
   def isSetQ[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[SkolemFunction2[FQ, X, Y]]] = Axiom(IsSet(SkolemFunction2[FQ, X, Y](x, y)))
 
@@ -148,8 +145,8 @@ trait NBGRules extends NBGTheory {
     Axiom(IsSet(z) ->: (z in Sum(x)) ->: ((z in v) /\ (v in x)))
   }
 
-  /** `M(x) -> M(z) -> ((z in y) /\ (y in x)) -> (z in U(x))` */
-  def sumIff2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[X] ->: IsSet[Z] ->: (Member[Z, Y] /\ Member[Y, X]) ->: Member[Z, Sum[X]]] =
-    Axiom(IsSet(x) ->: IsSet(z) ->: ((z in y) /\ (y in x)) ->: (z in Sum(x)))
+  /** `M(y) -> M(z) -> ((z in y) /\ (y in x)) -> (z in U(x))` */
+  def sumIff2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Y] ->: IsSet[Z] ->: (Member[Z, Y] /\ Member[Y, X]) ->: Member[Z, Sum[X]]] =
+    Axiom(IsSet(y) ->: IsSet(z) ->: ((z in y) /\ (y in x)) ->: (z in Sum(x)))
 
 }
