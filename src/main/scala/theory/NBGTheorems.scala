@@ -692,18 +692,50 @@ trait NBGTheorems extends NBGRules {
     subsetEqIff2(x, z)(subsetEqIff1(x, y, b)(xy) join subsetEqIff1(y, z, b)(yz))
   }
 
+  /** `z sube (x inter y) <-> ((z sube x) /\ (z sube y))` */
+  def subsetEqInter[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[SubsetEqual[Z, Intersect[X, Y]] <-> (SubsetEqual[Z, X] /\ SubsetEqual[Z, Y])] = {
+    val ~> = assume(z sube (x inter y)) { hyp =>
+      val sbx = isSetFb(z, x)
+      val bx = sbx.s
+      val sby = isSetFb(z, y)
+      val by = sby.s
+
+      val l = subsetEqIff2(z, x)(subsetEqIff1(z, x inter y, bx)(hyp) join intersectIff(x, y, bx)(sbx).toImplies join assume((bx in x) /\ (bx in y))(_.left))
+      val r = subsetEqIff2(z, y)(subsetEqIff1(z, x inter y, by)(hyp) join intersectIff(x, y, by)(sby).toImplies join assume((by in x) /\ (by in y))(_.right))
+
+      l #/\ r
+    }
+    val <~ = assume((z sube x) /\ (z sube y)) { hyp =>
+      val sb = isSetFb(z, x inter y)
+      val b = sb.s
+
+      val (l, r) = hyp.asPair
+
+      subsetEqIff2(z, x inter y)(assume(b in z)(h => intersectIff(x, y, b)(sb).swap(subsetEqIff1(z, x, b)(l)(h) #/\ subsetEqIff1(z, y, b)(r)(h))))
+    }
+
+    ~> combine <~
+  }
+
   /** `M(x) -> (x in P(x))` */
   def powerMonoticity[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, Power[X]]] = assume(IsSet(x)) { sx =>
     powerIff(x, x)(sx).swap(subsetEqReflexive(x))
   }
 
-  /** `M(y) -> (x sube y) -> (U(x) sube U(y))` */
-  def sumSubsetEqMonotonicity[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[Y] ->: SubsetEqual[X, Y] ->: SubsetEqual[Sum[X], Sum[Y]]] = assume(IsSet(y), x sube y) { (sy, hyp) =>
+  /** `(x sube y) -> (U(x) sube U(y))` */
+  def sumSubsetEqMonotonicity[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] ->: SubsetEqual[Sum[X], Sum[Y]]] = assume(x sube y) { hyp =>
     val sb = isSetFb(Sum(x), Sum(y))
     val b = sb.s
     val sq = isSetQ(x, b)
     val q = sq.s
     subsetEqIff2(Sum(x), Sum(y))(assume(b in Sum(x))(h => sumIff2(y, q, b)(sq)(sb)(sumIff1(x, b)(sb)(h).mapRight(subsetEqIff1(x, y, q)(hyp)))))
+  }
+
+  /** `(x sube y) -> (P(x) sube P(y))` */
+  def powerSubsetEqMonoticity[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[X, Y] ->: SubsetEqual[Power[X], Power[Y]]] = assume(x sube y) { hyp =>
+    val sb = isSetFb(Power(x), Power(y))
+    val b = sb.s
+    subsetEqIff2(Power(x), Power(y))(assume(b in Power(x))(h => powerIff(b, y)(sb).swap(subsetEqTransitivity(b, x, y)(powerIff(b, x)(sb)(h))(hyp))))
   }
 
   /** `U(P(x)) = x` */
@@ -721,6 +753,26 @@ trait NBGTheorems extends NBGRules {
     }
 
     (~> combine <~).toEquals
+  }
+
+  /** `x sube P(U(x))` */
+  def powerSum[X <: AnySet](x: X): Theorem[SubsetEqual[X, Power[Sum[X]]]] = {
+    val sb = isSetFb(x, Power(Sum(x)))
+    val b = sb.s
+    val sb1 = isSetFb(b, Sum(x))
+    val b1 = sb1.s
+
+    subsetEqIff2(x, Power(Sum(x)))(assume(b in x)(hyp => powerIff(b, Sum(x))(sb).swap(subsetEqIff2(b, Sum(x))(assume(b1 in b)(_ #/\ hyp) join sumIff2(x, b, b1)(sb)(sb1)))))
+  }
+
+  /** `P(x inter y) = P(x) inter P(y)` */
+  def powerIntersect[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Power[Intersect[X, Y]] === Intersect[Power[X], Power[Y]]] = {
+    val (z, sz) = zEqPair(Power(x inter y), Power(x) inter Power(y))
+
+    val ~> = assume((z sube x) /\ (z sube y))(h => powerIff(z, x)(sz).swap(h.left) #/\ powerIff(z, y)(sz).swap(h.right))
+    val <~ = assume((z in Power(x)) /\ (z in Power(y)))(h => powerIff(z, x)(sz)(h.left) #/\ powerIff(z, y)(sz)(h.right))
+
+    (powerIff(z, x inter y)(sz) join subsetEqInter(x, y, z) join (~> combine <~) join intersectIff(Power(x), Power(y), z)(sz).swap).toEquals
   }
 
   /** `P({}) = {{}}` */

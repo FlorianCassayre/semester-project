@@ -78,6 +78,33 @@ trait NBGRules extends NBGTheory {
 
   // TODO B*
 
+  /** `M(x) -> M(U(x))` */
+  def axiomU[X <: AnySet](x: X): Theorem[IsSet[X] ->: IsSet[Sum[X]]] = Axiom(IsSet(x) ->: IsSet(Sum(x)))
+
+  /** `M(x) -> M(P(x))` */
+  def axiomW[X <: AnySet](x: X): Theorem[IsSet[X] ->: IsSet[Power[X]]] = Axiom(IsSet(x) ->: IsSet(Power(x)))
+
+  type FM = "m"
+  type FN = "n"
+  def isSetM[F <: AnySet, X <: AnySet](f: F, x: X): Theorem[IsSet[SkolemFunction2[FM, F, X]]] = Axiom(IsSet(SkolemFunction2(f, x)))
+  def isSetN[F <: AnySet, X <: AnySet, U <: AnySet](f: F, x: X, u: U): Theorem[IsSet[SkolemFunction3[FN, F, X, U]]] = Axiom(IsSet(SkolemFunction3(f, x, u)))
+
+  // Stronger description of axiom S
+  /** `Fnc(f) -> M(x) -> M(u) -> ((u in m(f, x)) <-> ((<n(f, x, u), u> in f) /\ (n(f, x, u) in x)))` */
+  def axiomR[F <: AnySet, X <: AnySet, U <: AnySet](f: F, x: X, u: U):
+  Theorem[Fnc[F] ->: IsSet[X] ->: IsSet[U] ->: (Member[U, SkolemFunction2[FM, F, X]] <-> (Member[OrderedPair[SkolemFunction3[FN, F, X, U], U], F] /\ Member[SkolemFunction3[FN, F, X, U], X]))] = {
+    val m = SkolemFunction2[FM, F, X](f, x)
+    val n = SkolemFunction3[FN, F, X, U](f, x, u)
+    Axiom(Fnc(f) ->: IsSet(x) ->: IsSet(u) ->: ((u in m) <-> ((OrderedPair(n, u) in f) /\ (n in x))))
+  }
+
+  /** `({} in N) /\ ((u in N) ->: ((u union {u}) in N))` */
+  def axiomI[U <: AnySet](u: U): Theorem[Member[EmptySet, Infinity] /\ (Member[U, Infinity] ->: Member[Union[U, SingletonSet[U]], Infinity])] =
+    Axiom((EmptySet in Infinity) /\ ((u in Infinity) ->: ((u union SingletonSet(u)) in Infinity)))
+
+  /** `M(N)` */
+  def axiomIS: Theorem[IsSet[Infinity]] = Axiom(IsSet(Infinity))
+
   // --
 
   /** `M(z) -> (z in (x inter y)) <-> ((z in x) /\ (z in y))` */
@@ -148,5 +175,48 @@ trait NBGRules extends NBGTheory {
   /** `M(y) -> M(z) -> ((z in y) /\ (y in x)) -> (z in U(x))` */
   def sumIff2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Y] ->: IsSet[Z] ->: (Member[Z, Y] /\ Member[Y, X]) ->: Member[Z, Sum[X]]] =
     Axiom(IsSet(y) ->: IsSet(z) ->: ((z in y) /\ (y in x)) ->: (z in Sum(x)))
+
+  /** `M(u) -> M(v) -> M(w) -> (Fnc(x) /\ (((<u, v> in x) /\ (<u, w> in x)) -> (v = w)))` */
+  def functionIff[X <: AnySet, U <: AnySet, V <: AnySet, W <: AnySet](x: X, u: U, v: V, w: W):
+  Theorem[IsSet[U] ->: IsSet[V] ->: IsSet[W] ->: (Fnc[X] /\ ((Member[OrderedPair[U, V], X] /\ Member[OrderedPair[U, W], X]) ->: (V === W)))] =
+    Axiom(IsSet(u) ->: IsSet(v) ->: IsSet(w) ->: (Fnc(x) /\ (((OrderedPair(u, v) in x) /\ (OrderedPair(u, w) in x)) ->: (v === w))))
+
+  type FR = "r"
+  def isSetR[F <: AnySet, Z <: AnySet](f: F, z: Z): Theorem[IsSet[SkolemFunction2[FR, F, Z]]] = Axiom(IsSet(SkolemFunction2[FR, F, Z](f, z)))
+
+  /** `M(z) -> (z in R(f)) -> (<r(f, z), z> in f)` */
+  def rangeIff1[F <: AnySet, Z <: AnySet](f: F, z: Z): Theorem[IsSet[Z] ->: Member[Z, Range[F]] ->: Member[OrderedPair[SkolemFunction2[FR, F, Z], Z], F]] =
+    Axiom(IsSet(z) ->: (z in Range(f)) ->: (OrderedPair(SkolemFunction2[FR, F, Z](f, z), z) in f))
+
+
+
+  /** `0 = {}` */
+  def zeroIff: Theorem[Zero === EmptySet] = Axiom(Zero === EmptySet)
+
+  /** `S(n) = (n union {n})` */
+  def successorIff[N <: Natural](n: N): Theorem[Succ[N] === Union[N, SingletonSet[N]]] = Axiom(Succ(n) === (n union SingletonSet(n)))
+
+
+  /** `M(z) -> (x irr y) <-> (Rel(x) /\ ((z in y) -> ~(<z, z> in x)))` */
+  def irreflexiveIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Z] ->: (Irreflexive[X, Y] <-> (Relation[X] /\ (Member[Z, Y] ->: ~[Member[OrderedPair[Z, Z], X]])))] =
+    Axiom(IsSet(z) ->: ((x irr y) <-> (Relation(x) /\ ((z in y) ->: ~(OrderedPair(z, z) in x)))))
+
+  /** `M(u) -> M(v) -> M(w) -> (x tr y) <-> (Rel(x) /\ (((u in y) /\ (v in y) /\ (w in y) /\ (<u, v> in x) /\ (<v, w> in x)) -> (<u, w> in x)))` */
+  def transitiveIff[X <: AnySet, Y <: AnySet, U <: AnySet, V <: AnySet, W <: AnySet](x: X, y: Y, u: U, v: V, w: W):
+  Theorem[IsSet[U] ->: IsSet[V] ->: IsSet[W] ->: (Transitive[X, Y] <-> (Relation[X] /\ ((Member[U, Y] /\ Member[V, Y] /\ Member[W, Y] /\ Member[OrderedPair[U, V], X] /\ Member[OrderedPair[V, W], X]) ->: Member[OrderedPair[U, W], X])))] =
+    Axiom(IsSet(u) ->: IsSet(v) ->: IsSet(w) ->: ((x tr y) <-> (Relation(x) /\ (((u in y) /\ (v in y) /\ (w in y) /\ (OrderedPair(u, v) in x) /\ (OrderedPair(v, w) in x)) ->: (OrderedPair(u, w) in x)))))
+
+  /** `(x part y) <-> ((x irr y) /\ (x tr y))` */
+  def partialIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[PartialOrder[X, Y] <-> (Irreflexive[X, Y] /\ Transitive[X, Y])] =
+    Axiom((x part y) <-> ((x irr y) /\ (x tr y)))
+
+  /** `M(u) -> M(v) -> (x con y) <-> (Rel(x) /\ (((u in y) /\ (v in y) /\ ~(u = v)) -> ((<u, v> in x) \/ (<v, u> in x))))` */
+  def connectedIff[X <: AnySet, Y <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, u: U, v: V):
+  Theorem[IsSet[U] ->: IsSet[V] ->: (Connected[X, Y] <-> (Relation[X] /\ ((Member[U, Y] /\ Member[V, Y] /\ ~[U === V]) ->: (Member[OrderedPair[U, V], X] \/ Member[OrderedPair[V, U], X]))))] =
+    Axiom(IsSet(u) ->: IsSet(v) ->: ((x con y) <-> (Relation(x) /\ (((u in y) /\ (v in y) /\ ~(u === v)) ->: ((OrderedPair(u, v) in x) \/ (OrderedPair(v, u) in x))))))
+
+  /** `(x tot y) <-> ((x irr y) /\ (x tr y) /\ (x con y))` */
+  def totalIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[TotalOrder[X, Y] <-> (Irreflexive[X, Y] /\ Transitive[X, Y] /\ Connected[X, Y])] =
+    Axiom((x tot y) <-> ((x irr y) /\ (x tr y) /\ (x con y)))
 
 }

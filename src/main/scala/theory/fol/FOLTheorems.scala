@@ -329,13 +329,15 @@ trait FOLTheorems extends FOLRules {
   }
 
   implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {
-    def left(proof: Theorem[Q ->: False]): Theorem[P] = ???
-    def right(proof: Theorem[P ->: False]): Theorem[Q] = ???
+    def left(proof: Theorem[Q ->: False]): Theorem[P] = mixedDoubleNegationInvert(swapAssumptions(orImplies(thm))(iffCommutative(notIff(proof.formula.x))(proof)))
+    def right(proof: Theorem[P ->: False]): Theorem[Q] = mixedDoubleNegationInvert(orImplies(thm)(iffCommutative(notIff(proof.formula.x))(proof)))
     def swap: Theorem[Q \/ P] = orCommutative(thm)
-    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] = ???
-    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] = ???
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] =
+      impliesOr(swapAssumptions(swapAssumptions(orImplies(thm)) join assume(~thm.x ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation)))
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
+      impliesOr(orImplies(thm) join assume(~thm.y ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation))
     def reduce[R <: Formula](left: Theorem[P ->: R])(right: Theorem[Q ->: R]): Theorem[R] = orCase(thm, left, right)
-    def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
+    //def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
     def toImpliesNot: Theorem[~[P] ->: ~[Q] ->: False] = orImplies(thm)
   }
 
@@ -354,6 +356,10 @@ trait FOLTheorems extends FOLRules {
 
   implicit class WrapperFalse(thm: Theorem[False]) {
     def apply[P <: Formula](p: P): Theorem[P] = exFalso(p)(thm)
+  }
+
+  implicit class WrapperOrImplies[P <: Formula, Q <: Formula](thm: Theorem[~[P] ->: ~[Q] ->: False]) {
+    def toOr: Theorem[P \/ Q] = impliesOr(thm)
   }
 
 }

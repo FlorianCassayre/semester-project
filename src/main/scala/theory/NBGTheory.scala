@@ -49,6 +49,26 @@ trait NBGTheory extends FOLTheorems {
   case class Power[A <: AnySet](a: A) extends AnySet
   case class Sum[A <: AnySet](a: A) extends AnySet
 
+  case class Fnc[A <: AnySet](a: A) extends Formula
+
+  case object Infinity extends AnySet
+  type Infinity = Infinity.type
+
+  case class Range[A <: AnySet](a: A) extends AnySet
+
+  abstract class Natural extends AnySet
+  case object Zero extends Natural
+  type Zero = Zero.type
+  case class Succ[N <: Natural](n: N) extends Natural
+
+  abstract class RelationalProperty[X <: AnySet, Y <: AnySet](x: X, y: Y) extends Formula
+  case class Irreflexive[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  case class Transitive[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  case class PartialOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  case class Connected[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  case class TotalOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  //case class WellOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+
   case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit v: ValueOf[I]) extends AnySet
@@ -66,6 +86,11 @@ trait NBGTheory extends FOLTheorems {
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
     def diff[T <: AnySet](that: T): Difference[S, T] = Difference(set, that)
     def *[T <: AnySet](that: T): Product[S, T] = Product(set, that)
+    def irr[T <: AnySet](that: T): Irreflexive[S, T] = Irreflexive(set, that)
+    def tr[T <: AnySet](that: T): Transitive[S, T] = Transitive(set, that)
+    def part[T <: AnySet](that: T): PartialOrder[S, T] = PartialOrder(set, that)
+    def con[T <: AnySet](that: T): Connected[S, T] = Connected(set, that)
+    def tot[T <: AnySet](that: T): TotalOrder[S, T] = TotalOrder(set, that)
   }
   implicit def setToExtended[S <: AnySet](set: S): ExtendedSet[S] = new ExtendedSet[S](set)
 
