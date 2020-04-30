@@ -56,11 +56,6 @@ trait NBGTheory extends FOLTheorems {
 
   case class Range[A <: AnySet](a: A) extends AnySet
 
-  abstract class Natural extends AnySet
-  case object Zero extends Natural
-  type Zero = Zero.type
-  case class Succ[N <: Natural](n: N) extends Natural
-
   abstract class RelationalProperty[X <: AnySet, Y <: AnySet](x: X, y: Y) extends Formula
   case class Irreflexive[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
   case class Transitive[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
@@ -74,6 +69,7 @@ trait NBGTheory extends FOLTheorems {
   case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction3[I <: Id, A <: AnySet, B <: AnySet, C <: AnySet](a: A, b: B, c: C)(implicit v: ValueOf[I]) extends AnySet
 
+  abstract class Ordinal extends AnySet // Further work
 
   final class ExtendedSet[S <: AnySet](set: S) {
     // http://asciimath.org/
@@ -85,7 +81,6 @@ trait NBGTheory extends FOLTheorems {
     def unary_- : -[S] = Complement(set)
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
     def diff[T <: AnySet](that: T): Difference[S, T] = Difference(set, that)
-    def *[T <: AnySet](that: T): Product[S, T] = Product(set, that)
     def irr[T <: AnySet](that: T): Irreflexive[S, T] = Irreflexive(set, that)
     def tr[T <: AnySet](that: T): Transitive[S, T] = Transitive(set, that)
     def part[T <: AnySet](that: T): PartialOrder[S, T] = PartialOrder(set, that)

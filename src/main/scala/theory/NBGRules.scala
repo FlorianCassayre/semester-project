@@ -147,17 +147,17 @@ trait NBGRules extends NBGTheory {
   def productIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z):
   Theorem[IsSet[Z] ->: Member[Z, Product[X, Y]] ->: ((X === OrderedPair[SkolemFunction3[FP1, X, Y, Z], SkolemFunction3[FP2, X, Y, Z]]) /\ Member[SkolemFunction3[FP1, X, Y, Z], X] /\ Member[SkolemFunction3[FP2, X, Y, Z], Y])] = {
     val (u, v) = (SkolemFunction3[FP1, X, Y, Z](x, y, z), SkolemFunction3[FP2, X, Y, Z](x, y, z))
-    Axiom(IsSet(z) ->: (z in x * y) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)))
+    Axiom(IsSet(z) ->: (z in Product(x, y)) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)))
   }
 
   /** `TODO` */
   def productIff2[X <: AnySet, Y <: AnySet, Z <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, z: Z, u: U, v: V):
   Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: ((X === OrderedPair[U, V]) /\ Member[U, X] /\ Member[V, Y]) ->: Member[Z, Product[X, Y]]] =
-    Axiom(IsSet(x) ->: IsSet(y) ->: IsSet(z) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)) ->: (z in x * y))
+    Axiom(IsSet(x) ->: IsSet(y) ->: IsSet(z) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)) ->: (z in Product(x, y)))
 
   /** `Rel(x) <-> (x in U * U)` */
   def relationIff[X <: AnySet](x: X): Theorem[Relation[X] <-> SubsetEqual[X, Product[Universe, Universe]]] =
-    Axiom(Relation(x) <-> (x sube Universe * Universe))
+    Axiom(Relation(x) <-> (x sube Product(Universe, Universe)))
 
   /** `M(x) -> ((x in P(y)) <-> (x sube y))` */
   def powerIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: (Member[X, Power[Y]] <-> SubsetEqual[X, Y])] =
@@ -188,13 +188,6 @@ trait NBGRules extends NBGTheory {
   def rangeIff1[F <: AnySet, Z <: AnySet](f: F, z: Z): Theorem[IsSet[Z] ->: Member[Z, Range[F]] ->: Member[OrderedPair[SkolemFunction2[FR, F, Z], Z], F]] =
     Axiom(IsSet(z) ->: (z in Range(f)) ->: (OrderedPair(SkolemFunction2[FR, F, Z](f, z), z) in f))
 
-
-
-  /** `0 = {}` */
-  def zeroIff: Theorem[Zero === EmptySet] = Axiom(Zero === EmptySet)
-
-  /** `S(n) = (n union {n})` */
-  def successorIff[N <: Natural](n: N): Theorem[Succ[N] === Union[N, SingletonSet[N]]] = Axiom(Succ(n) === (n union SingletonSet(n)))
 
 
   /** `M(z) -> (x irr y) <-> (Rel(x) /\ ((z in y) -> ~(<z, z> in x)))` */
