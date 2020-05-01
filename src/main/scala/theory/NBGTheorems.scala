@@ -621,7 +621,7 @@ trait NBGTheorems extends NBGRules {
     (~> combine <~).toEquals
   }
 
-  /** `Sum({}) = {}` */
+  /** `Sum({{}}) = {}` */
   def sumSingletonEmpty: Theorem[Sum[SingletonSet[EmptySet]] === EmptySet] = sumSingleton(EmptySet)(axiomNS) // Corollary
 
   /** `U(V) = V` */

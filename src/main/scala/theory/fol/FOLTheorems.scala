@@ -180,6 +180,7 @@ trait FOLTheorems extends FOLRules {
       impliesTransitive(impliesTransitive(toImplies(notIff(q)), addConclusion(pq, False)), toImplies(iffCommutative(notIff(p))))
   }
 
+  /** `q -> p` given `~p -> ~q` */
   def impliesUninverse[P <: Formula, Q <: Formula](pq: Theorem[~[P] ->: ~[Q]]): Theorem[Q ->: P] = pq.formula match {
     case ~(p) ->: ~(q) => assume(q)(tq => notUnduplicate(impliesInverse(pq)(notDuplicate(tq))))
   }

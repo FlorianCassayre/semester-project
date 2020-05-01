@@ -1,10 +1,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import theory.fol.FOLTheorems
 
-class TestFOL extends AnyFunSuite with FOLTheorems {
-
-  // Shorthand
-  implicit def toTheorem[F <: Formula](f: F): Theorem[F] = oops(f)
+class TestFOL extends ProofTestSuite with FOLTheorems {
 
   val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
 
@@ -47,127 +44,143 @@ class TestFOL extends AnyFunSuite with FOLTheorems {
   }
 
   test("add implies") {
-    assert(addImplies(p, q).formula == p ->: q ->: p)
+    addImplies(p, q) =?= p ->: q ->: p
   }
 
   test("implies distribute") {
-    assert(impliesDistribute(p, q, r).formula == (p ->: q ->: r) ->: (p ->: q) ->: (p ->: r))
+    impliesDistribute(p, q, r) =?= (p ->: q ->: r) ->: (p ->: q) ->: (p ->: r)
   }
 
   test("iff to implies") {
-    assert(toImplies(p <-> q).formula == p ->: q)
+    toImplies(p <-> q) =?= p ->: q
   }
 
   test("add assumption") {
-    assert(addAssumption(p, q).formula == p ->: q)
+    addAssumption(p, q) =?= p ->: q
   }
 
   test("implies transitive") {
-    val pr = p ->: r
-    assert(impliesTransitive(p ->: q, q ->: r).formula == pr)
+    impliesTransitive(p ->: q, q ->: r) =?= p ->: r
   }
 
   test("swap assumptions") {
-    assert(swapAssumptions(p ->: q ->: r).formula == q ->: p ->: r)
+    swapAssumptions(p ->: q ->: r) =?= q ->: p ->: r
   }
 
   test("iff commutative") {
-    assert(iffCommutative(p <-> q).formula == q <-> p)
+    iffCommutative(p <-> q) =?= q <-> p
+  }
+
+  test("truth") {
+    truth =?= True
   }
 
   test("and commutative") {
-    assert(andCommutative(p /\ q).formula == q /\ p)
+    andCommutative(p /\ q) =?= q /\ p
   }
 
   test("or commutative") {
-    assert(orCommutative(p \/ q).formula == q \/ p)
+    orCommutative(p \/ q) =?= q \/ p
   }
 
   test("iff reflexive") {
-    assert(iffReflexive(p).formula == p <-> p)
+    iffReflexive(p) =?= p <-> p
   }
 
   test("and extract left") {
-    assert(andExtractLeft(p /\ q).formula == p)
+    andExtractLeft(p /\ q) =?= p
   }
 
   test("and combine") {
-    assert(andCombine(p, q).formula == p /\ q)
+    andCombine(p, q) =?= p /\ q
   }
 
   test("iff transitive") {
-    assert(iffTransitive(p <-> q, q <-> r).formula == p <-> r)
+    iffTransitive(p <-> q, q <-> r) =?= p <-> r
   }
 
   test("implies to iff rule") {
-    assert(impliesToIffRule(p ->: q, q ->: p).formula == p <-> q)
+    impliesToIffRule(p ->: q, q ->: p) =?= p <-> q
   }
 
   test("to double negation") {
-    assert(toDoubleNegation(p).formula == (p ->: False) ->: False)
+    toDoubleNegation(p) =?= (p ->: False) ->: False
   }
 
   test("mixed double negation") {
-    assert(mixedDoubleNegation(p).formula == ~p ->: False)
+    mixedDoubleNegation(p) =?= ~p ->: False
   }
 
   test("mixed double negation invert") {
-    assert(mixedDoubleNegationInvert(~p ->: False).formula == p)
+    mixedDoubleNegationInvert(~p ->: False) =?= p
   }
 
   test("not unduplicate") {
-    assert(notUnduplicate(~(~p)).formula == p)
+    notUnduplicate(~(~p)) =?= p
   }
 
   test("not duplicate") {
-    assert(notDuplicate(p).formula == ~(~p))
+    notDuplicate(p) =?= ~(~p)
   }
 
   test("double not iff") {
-    doubleNotIff(~(~p) <-> p)
+    doubleNotIff(p) =?= ~(~p) <-> p
   }
 
   test("or unduplicate") {
-    assert(orUnduplicate(p \/ p).formula == p)
+    orUnduplicate(p \/ p) =?= p
   }
 
   test("iff add not") {
-    assert(iffAddNot(p <-> q).formula == ~p <-> ~q)
+    iffAddNot(p <-> q) =?= ~p <-> ~q
   }
 
   test("or add right") {
-    assert(orAddRight(p, q).formula == p \/ q)
+    orAddRight(p, q) =?= p \/ q
   }
 
   test("add conclusion") {
-    assert(addConclusion(p ->: q, r).formula == (q ->: r) ->: (p ->: r))
+    addConclusion(p ->: q, r) =?= (q ->: r) ->: (p ->: r)
   }
 
   test("implies inverse") {
-    assert(impliesInverse(p ->: q).formula == ~q ->: ~p)
+    impliesInverse(p ->: q) =?= ~q ->: ~p
+  }
+
+  test("implies uninverse") {
+    impliesUninverse(~p ->: ~q) =?= q ->: p
   }
 
   test("or implies") {
-    assert(orImplies(p \/ q).formula == ~p ->: ~q ->: False)
+    orImplies(p \/ q) =?= ~p ->: ~q ->: False
+  }
+
+  test("implies or") {
+    impliesOr(~p ->: ~q ->: False) =?= p \/ q
   }
 
   test("or case") {
-    assert(orCase(p \/ q, p ->: r, q ->: r).formula == r)
+    orCase(p \/ q, p ->: r, q ->: r) =?= r
   }
 
   test("iff remove not") {
-    assert(iffRemoveNot(~p <-> ~q).formula == p <-> q)
+    iffRemoveNot(~p <-> ~q) =?= p <-> q
   }
 
   test("iff swap not") {
-    assert(iffSwapNot(p <-> ~q).formula == ~p <-> q)
+    iffSwapNot(p <-> ~q) =?= ~p <-> q
   }
 
   test("ex falso") {
-    assert(exFalso(p).formula == False ->: p)
+    exFalso(p) =?= False ->: p
   }
 
   test("and to iff") {
-    assert(andToIff(p /\ q).formula == p <-> q)
+    andToIff(p /\ q) =?= p <-> q
   }
+
+  test("and associative iff") {
+    andAssociativeIff(p, q, r) =?= ((p /\ q) /\ r) <-> (p /\ (q /\ r))
+  }
+
 }
