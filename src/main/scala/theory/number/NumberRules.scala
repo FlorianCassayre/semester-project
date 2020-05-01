@@ -32,9 +32,10 @@ trait NumberRules extends NumberTheory {
   def mAxiom7[A <: Expr](a: A): Theorem[(A x Zero) === Zero] = Axiom((a * Zero) === Zero) // TODO
 
   /** `a * b' = (a * b) + a` */
-  def mAxiom8[A <: Expr, B <: Expr](a: A, b: B): Theorem[(A x B) === ((A x B) + A)] = Axiom((a * b) === ((a * b) + a)) // TODO
+  def mAxiom8[A <: Expr, B <: Expr](a: A, b: B): Theorem[(A x Succ[B]) === ((A x B) + A)] = Axiom((a * Succ(b)) === ((a * b) + a)) // TODO
 
 
   def mInduction[P[N <: Expr] <: Formula, R <: Expr](p: P[R])(base: Theorem[P[Zero]])(inductive: Theorem[P[Ind] ->: P[Succ[Ind]]]):
   Theorem[P[R]] = Axiom(p) // TODO
+
 }
