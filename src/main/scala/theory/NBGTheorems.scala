@@ -817,4 +817,196 @@ trait NBGTheorems extends NBGRules {
     //(~> combine <~).toEquals
     ???
   }
+
+  /** `M(x) -> M(y) -> (U({x, y}) = (x union y))` */
+  def sumUnion[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Sum[PairSet[X, Y]] === (Union[X, Y]))] = assume(IsSet(x), IsSet(y)) { (sx, sy) =>
+    val (z, sz) = zEqPair(Sum(PairSet(x, y)), x union y)
+
+    val ~> = assume(z in Sum(PairSet(x, y))) { hyp =>
+      val (l, r) = sumIff1(PairSet(x, y), z)(sz)(hyp).asPair
+      val q = r.a
+      axiomP(x, y, q)(sx)(sy)(isSetQ(q.a, q.b))(r)
+        .mapLeft(assume(q === x)(h => equalsIff1(q, x, z)(h)(l))).mapRight(assume(q === y)(h => equalsIff1(q, y, z)(h)(l)))
+    }
+    val <~ = assume((z in x) \/ (z in y)) { hyp =>
+      val l = assume(z in x)(h => sumIff2(PairSet(x, y), x, z)(sx)(sz)(h #/\ axiomP(x, y, x)(sx)(sy)(sx).swap(x.reflexive #\/ (x === y))))
+      val r = assume(z in y)(h => sumIff2(PairSet(x, y), y, z)(sy)(sz)(h #/\ axiomP(x, y, y)(sx)(sy)(sy).swap((y === x) #\/ y.reflexive)))
+      hyp.reduce(l)(r)
+    }
+
+    ((~> combine <~) join unionContains(x, y, z)(sz).swap).toEquals
+  }
+
+  /** `M(x) -> M(y) -> M(x union y)` */
+  def unionSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Union[X, Y]]] = assume(IsSet(x), IsSet(y)) { (sx, sy) =>
+    equalsIsSet(axiomU(PairSet(x, y))(axiomPS(x, y)(sx)(sy)) #/\ sumUnion(x, y)(sx)(sy))
+  }
+
+  /** `M(x) -> (x sube y) -> M(y)` */
+  def subsetEqSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: SubsetEqual[X, Y] ->: IsSet[Y]] = assume(IsSet(x), x sube y) { (sx, hyp) =>
+    ???
+  }
+
+  /** `M(x) -> M(y) -> M(<x, y>)` */
+  def orderedPairSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[OrderedPair[X, Y]]] = {
+    ??? // TODO
+  }
+
+  /** `(x * y) sube (V * V)` */
+  def productSubsetEq[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[Product[X, Y], Product[Universe, Universe]]] = {
+    val sb = isSetFb(Product(x, y), Product(Universe, Universe))
+    val b = sb.s
+    val t = assume(b in Product(x, y)) { hyp =>
+      val t1 = productIff1(x, y, b)(sb)(hyp).left.left
+      val sp1 = isSetP1(x, y, b)
+      val p1 = sp1.s
+      val sp2 = isSetP2(x, y, b)
+      val p2 = sp2.s
+
+      productIff2(Universe, Universe, b, p1, p2)(sp1)(sp2)(sb)(t1 #/\ universeContains(p1)(sp1) #/\ universeContains(p2)(sp2))
+    }
+
+    subsetEqIff2(Product(x, y), Product(Universe, Universe))(t)
+  }
+
+  /** `Rel(x * y)` */
+  def productRelation[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Relation[Product[X, Y]]] =
+    relationIff(Product(x, y)).swap(productSubsetEq(x, y))
+
+  /** `M(u) -> M(v) -> (<u, v> in (x * y)) <-> ((u in x) /\ (v in y))` */
+  def productContains[X <: AnySet, Y <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, u: U, v: V): Theorem[IsSet[U] ->: IsSet[V] ->: (Member[OrderedPair[U, V], Product[X, Y]] <-> (Member[U, X] /\ Member[V, Y]))] = assume(IsSet(u), IsSet(v)) { (su, sv) =>
+    val uv = OrderedPair(u, v)
+    val suv = orderedPairSet(u, v)(su)(sv)
+    val xy = Product(x, y)
+    val ~> = assume(uv in xy) { hyp =>
+      val sp1 = isSetP1(x, y, uv)
+      val p1 = sp1.s
+      val sp2 = isSetP2(x, y, uv)
+      val p2 = sp2.s
+      val (tp, t3) = productIff1(x, y, uv)(suv)(hyp).asPair
+      val (t1, t2) = tp.asPair
+      val (l, r) = orderedPairToEquals(u, v, p1, p2)(su)(sv)(sp1)(sp2)(t1).asPair
+      axiomT(p1, u, x)(l.swap)(t2) #/\ axiomT(p2, v, y)(r.swap)(t3)
+    }
+    val <~ = assume((u in x) /\ (v in y))(hyp => productIff2(x, y, uv, u, v)(su)(sv)(suv)(uv.reflexive #/\ hyp.left #/\ hyp.right))
+
+    ~> combine <~
+  }
+
+  /** `Rel(I)` */
+  def identityRelation: Theorem[Relation[Identity]] = {
+    val sb = isSetFb(Identity, Product(Universe, Universe))
+    val b = sb.s
+    val t = assume(b in Identity) { hyp =>
+      val si = isSetI(b)
+      val i = si.s
+      val ui = universeContains(i)(si)
+      productIff2(Universe, Universe, b, i, i)(si)(si)(sb)(identityIff1(b)(sb)(hyp) #/\ ui #/\ ui)
+    }
+
+    relationIff(Identity).swap(subsetEqIff2(Identity, Product(Universe, Universe))(t))
+  }
+
+  /** `Fnc(I)` */
+  def identityFunction: Theorem[Fnc[Identity]] = {
+    val sf1 = isSetF1(Identity)
+    val sf2 = isSetF2(Identity)
+    val sf3 = isSetF3(Identity)
+    val f1 = sf1.s
+    val f2 = sf2.s
+    val f3 = sf3.s
+
+    val t = assume((OrderedPair(f1, f2) in Identity) /\ (OrderedPair(f1, f3) in Identity)) { hyp =>
+      val (l, r) = hyp.asPair
+      val si1 = isSetI(OrderedPair(f1, f2))
+      val i1 = si1.s
+      val si2 = isSetI(OrderedPair(f1, f3))
+      val i2 = si2.s
+      val t1 = identityIff1(OrderedPair(f1, f2))(orderedPairSet(f1, f2)(sf1)(sf2))(l)
+      val t2 = identityIff1(OrderedPair(f1, f3))(orderedPairSet(f1, f3)(sf1)(sf3))(r)
+      val (l1, r1) = orderedPairToEquals(f1, f2, i1, i1)(sf1)(sf2)(si1)(si1)(t1).asPair
+      val (l2, r2) = orderedPairToEquals(f1, f3, i2, i2)(sf1)(sf3)(si2)(si2)(t2).asPair
+      r1 join l1.swap join l2 join r2.swap
+    }
+
+    functionIff2(Identity)(identityRelation #/\ t)
+  }
+
+  /** `M(x) -> (<x, x> in I)` */
+  def identityContains[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[OrderedPair[X, X], Identity]] = assume(IsSet(x)) { sx =>
+    val xx = OrderedPair(x, x)
+    val sxx = orderedPairSet(x, x)(sx)(sx)
+    identityIff2(xx, x)(sxx)(sx)(xx.reflexive)
+  }
+
+  /** `M(x) -> M(y) -> (<x, y> in I) -> (x = y)` */
+  def identityEquals[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: Member[OrderedPair[X, Y], Identity] ->: (X === Y)] = assume(IsSet(x), IsSet(y)) { (sx, sy) =>
+    val xy = OrderedPair(x, y)
+    val sxy = orderedPairSet(x, y)(sx)(sy)
+    assume(xy in Identity) { hyp =>
+      val si = isSetI(xy)
+      val i = si.s
+      val (l, r) = orderedPairToEquals(x, y, i, i)(sx)(sy)(si)(si)(identityIff1(xy)(sxy)(hyp)).asPair
+      l join r.swap
+    }
+  }
+
+  /** `Rel(x) -> Rel(x inter y)` */
+  def intersectRelation[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Relation[X] ->: Relation[Intersect[X, Y]]] = assume(Relation(x)) { hyp =>
+    val sb = isSetFb(x inter y, Product(Universe, Universe))
+    val b = sb.s
+    val t = assume(b in (x inter y))(h => subsetEqIff1(x, Product(Universe, Universe), b)(relationIff(x)(hyp))(intersectIff(x, y, b)(sb)(h).left))
+
+    relationIff(x inter y).swap(subsetEqIff2(x inter y, Product(Universe, Universe))(t))
+  }
+
+  /** `Fnc(x) -> Fnc(x inter y)` */
+  def intersectFunction[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Fnc[X] ->: Fnc[Intersect[X, Y]]] = assume(Fnc(x)) { hyp =>
+    val xy = x inter y
+    val sf1 = isSetF1(xy)
+    val sf2 = isSetF2(xy)
+    val sf3 = isSetF3(xy)
+    val f1 = sf1.s
+    val f2 = sf2.s
+    val f3 = sf3.s
+
+    val (rx, irx) = functionIff1(x, f1, f2, f3)(sf1)(sf2)(sf3)(hyp).asPair
+    val t = assume((OrderedPair(f1, f2) in xy) /\ (OrderedPair(f1, f3) in xy)) { h =>
+      val l = h.left.toIff(orderedPairSet(f1, f2)(sf1)(sf2)).left
+      val r = h.right.toIff(orderedPairSet(f1, f3)(sf1)(sf3)).left
+      irx(l #/\ r)
+    }
+
+    functionIff2(xy)(intersectRelation(x, y)(rx) #/\ t)
+  }
+
+  /** `M(x) -> M(y inter x)` */
+  def intersectSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Intersect[Y, X]]] = assume(IsSet(x)) { sx =>
+    val fi = intersectFunction(Identity, Product(y, y))(identityFunction)
+    val f = fi.a
+    val sm = isSetM(f, x)
+    val m = sm.s
+    val (u, su) = zEqPair(m, y inter x)
+    val sn = isSetN(f, x, u)
+    val n = sn.s
+
+    val ~> = assume(u in m) { hyp =>
+      val (l, r) = axiomR1(f, x, u)(fi)(sx)(su)(hyp).asPair
+      val t = intersectIff(Identity, Product(y, y), OrderedPair(n, u))(orderedPairSet(n, u)(sn)(su))(l)
+      val uy = productContains(y, y, n, u)(sn)(su)(t.right).right
+      val ux = axiomT(n, u, x)(identityEquals(n, u)(sn)(su)(t.left))(r)
+      intersectIff(y, x, u)(su).swap(uy #/\ ux)
+    }
+    val <~ = assume(u in (y inter x)) { hyp =>
+      val (l, r) = hyp.toIff(su).asPair
+      val l1 = identityContains(u)(su)
+      val r1 = productContains(y, y, u, u)(su)(su).swap(l #/\ l)
+      val lr = intersectIff(Identity, Product(y, y), OrderedPair(u, u))(orderedPairSet(u, u)(su)(su)).swap(l1 #/\ r1)
+      axiomR2(f, x, u, u)(fi)(sx)(su)(lr #/\ r)
+    }
+
+    val eq = (~> combine <~).toEquals
+
+    equalsIsSet(sm #/\ eq)
+  }
 }

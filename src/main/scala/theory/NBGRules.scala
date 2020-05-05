@@ -76,6 +76,13 @@ trait NBGRules extends NBGTheory {
   def axiomB1[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (Member[OrderedPair[X, Y], SkolemConstant[FD]] <-> Member[X, Y])] =
     Axiom(IsSet(x) ->: IsSet(y) ->: ((OrderedPair(x, y) in SkolemConstant[FD]) <-> (x in y)))
 
+  type FU = "u"
+  def isSetU[X <: AnySet](x: X): Theorem[IsSet[SkolemFunction1[FU, X]]] = Axiom(IsSet(SkolemFunction1[FU, X](x)))
+
+  /** `(<u, v> in f(x)) <-> (u in x)` */
+  def axiomB5[X <: AnySet, U <: AnySet, V <: AnySet](x: X, u: U, v: V): Theorem[Member[OrderedPair[U, V], SkolemFunction1[FU, X]] <-> Member[U, X]] =
+    Axiom((OrderedPair(u, v) in SkolemFunction1[FU, X](x)) <-> (u in x))
+
   // TODO B*
 
   /** `M(x) -> M(U(x))` */
@@ -89,13 +96,19 @@ trait NBGRules extends NBGTheory {
   def isSetM[F <: AnySet, X <: AnySet](f: F, x: X): Theorem[IsSet[SkolemFunction2[FM, F, X]]] = Axiom(IsSet(SkolemFunction2(f, x)))
   def isSetN[F <: AnySet, X <: AnySet, U <: AnySet](f: F, x: X, u: U): Theorem[IsSet[SkolemFunction3[FN, F, X, U]]] = Axiom(IsSet(SkolemFunction3(f, x, u)))
 
-  // Stronger description of axiom S
-  /** `Fnc(f) -> M(x) -> M(u) -> ((u in m(f, x)) <-> ((<n(f, x, u), u> in f) /\ (n(f, x, u) in x)))` */
-  def axiomR[F <: AnySet, X <: AnySet, U <: AnySet](f: F, x: X, u: U):
-  Theorem[Fnc[F] ->: IsSet[X] ->: IsSet[U] ->: (Member[U, SkolemFunction2[FM, F, X]] <-> (Member[OrderedPair[SkolemFunction3[FN, F, X, U], U], F] /\ Member[SkolemFunction3[FN, F, X, U], X]))] = {
+  /** `Fnc(f) -> M(x) -> M(u) -> (u in m(f, x)) -> ((<n(f, x, u), u> in f) /\ (n(f, x, u) in x))` */
+  def axiomR1[F <: AnySet, X <: AnySet, U <: AnySet](f: F, x: X, u: U):
+  Theorem[Fnc[F] ->: IsSet[X] ->: IsSet[U] ->: (Member[U, SkolemFunction2[FM, F, X]] ->: (Member[OrderedPair[SkolemFunction3[FN, F, X, U], U], F] /\ Member[SkolemFunction3[FN, F, X, U], X]))] = {
     val m = SkolemFunction2[FM, F, X](f, x)
     val n = SkolemFunction3[FN, F, X, U](f, x, u)
-    Axiom(Fnc(f) ->: IsSet(x) ->: IsSet(u) ->: ((u in m) <-> ((OrderedPair(n, u) in f) /\ (n in x))))
+    Axiom(Fnc(f) ->: IsSet(x) ->: IsSet(u) ->: ((u in m) ->: ((OrderedPair(n, u) in f) /\ (n in x))))
+  }
+
+  /** `Fnc(f) -> M(x) -> M(v) -> ((<v, u> in f) /\ (v in x))) -> (u in m(f, x))` */
+  def axiomR2[F <: AnySet, X <: AnySet, U <: AnySet, V <: AnySet](f: F, x: X, u: U, v: V):
+  Theorem[Fnc[F] ->: IsSet[X] ->: IsSet[V] ->: (Member[OrderedPair[V, U], F] /\ Member[V, X]) ->: Member[U, SkolemFunction2[FM, F, X]]] = {
+    val m = SkolemFunction2[FM, F, X](f, x)
+    Axiom(Fnc(f) ->: IsSet(x) ->: IsSet(v) ->: ((OrderedPair(v, u) in f) /\ (v in x)) ->: (u in m))
   }
 
   /** `({} in N) /\ ((u in N) ->: ((u union {u}) in N))` */
@@ -143,19 +156,19 @@ trait NBGRules extends NBGTheory {
   type FP2 = "p2"
   def isSetP2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[SkolemFunction3[FP2, X, Y, Z]]] = Axiom(IsSet(SkolemFunction3[FP2, X, Y, Z](x, y, z)))
 
-  /** `TODO` */
+  /** `M(z) -> (z in (x * y)) -> ((z = <fp1, fp2>) /\ (fp1 in x) /\ (fp2 in y))` */
   def productIff1[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z):
-  Theorem[IsSet[Z] ->: Member[Z, Product[X, Y]] ->: ((X === OrderedPair[SkolemFunction3[FP1, X, Y, Z], SkolemFunction3[FP2, X, Y, Z]]) /\ Member[SkolemFunction3[FP1, X, Y, Z], X] /\ Member[SkolemFunction3[FP2, X, Y, Z], Y])] = {
+  Theorem[IsSet[Z] ->: Member[Z, Product[X, Y]] ->: ((Z === OrderedPair[SkolemFunction3[FP1, X, Y, Z], SkolemFunction3[FP2, X, Y, Z]]) /\ Member[SkolemFunction3[FP1, X, Y, Z], X] /\ Member[SkolemFunction3[FP2, X, Y, Z], Y])] = {
     val (u, v) = (SkolemFunction3[FP1, X, Y, Z](x, y, z), SkolemFunction3[FP2, X, Y, Z](x, y, z))
-    Axiom(IsSet(z) ->: (z in Product(x, y)) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)))
+    Axiom(IsSet(z) ->: (z in Product(x, y)) ->: ((z === OrderedPair(u, v)) /\ (u in x) /\ (v in y)))
   }
 
-  /** `TODO` */
+  /** `M(u) -> M(v) -> M(z) -> ((z = <u, v>) /\ (u in x) /\ (v in y)) -> (z in (x * y)))` */
   def productIff2[X <: AnySet, Y <: AnySet, Z <: AnySet, U <: AnySet, V <: AnySet](x: X, y: Y, z: Z, u: U, v: V):
-  Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[Z] ->: ((X === OrderedPair[U, V]) /\ Member[U, X] /\ Member[V, Y]) ->: Member[Z, Product[X, Y]]] =
-    Axiom(IsSet(x) ->: IsSet(y) ->: IsSet(z) ->: ((x === OrderedPair(u, v)) /\ (u in x) /\ (v in y)) ->: (z in Product(x, y)))
+  Theorem[IsSet[U] ->: IsSet[V] ->: IsSet[Z] ->: ((Z === OrderedPair[U, V]) /\ Member[U, X] /\ Member[V, Y]) ->: Member[Z, Product[X, Y]]] =
+    Axiom(IsSet(u) ->: IsSet(v) ->: IsSet(z) ->: ((z === OrderedPair(u, v)) /\ (u in x) /\ (v in y)) ->: (z in Product(x, y)))
 
-  /** `Rel(x) <-> (x in U * U)` */
+  /** `Rel(x) <-> (x sube U * U)` */
   def relationIff[X <: AnySet](x: X): Theorem[Relation[X] <-> SubsetEqual[X, Product[Universe, Universe]]] =
     Axiom(Relation(x) <-> (x sube Product(Universe, Universe)))
 
@@ -176,10 +189,30 @@ trait NBGRules extends NBGTheory {
   def sumIff2[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Y] ->: IsSet[Z] ->: (Member[Z, Y] /\ Member[Y, X]) ->: Member[Z, Sum[X]]] =
     Axiom(IsSet(y) ->: IsSet(z) ->: ((z in y) /\ (y in x)) ->: (z in Sum(x)))
 
-  /** `M(u) -> M(v) -> M(w) -> (Fnc(x) /\ (((<u, v> in x) /\ (<u, w> in x)) -> (v = w)))` */
-  def functionIff[X <: AnySet, U <: AnySet, V <: AnySet, W <: AnySet](x: X, u: U, v: V, w: W):
-  Theorem[IsSet[U] ->: IsSet[V] ->: IsSet[W] ->: (Fnc[X] /\ ((Member[OrderedPair[U, V], X] /\ Member[OrderedPair[U, W], X]) ->: (V === W)))] =
-    Axiom(IsSet(u) ->: IsSet(v) ->: IsSet(w) ->: (Fnc(x) /\ (((OrderedPair(u, v) in x) /\ (OrderedPair(u, w) in x)) ->: (v === w))))
+  type FF1 = "f1"
+  type FF2 = "f2"
+  type FF3 = "f3"
+  def isSetF1[X <: AnySet](x: X): Theorem[IsSet[SkolemFunction1[FF1, X]]] = Axiom(IsSet(SkolemFunction1[FF1, X](x)))
+  def isSetF2[X <: AnySet](x: X): Theorem[IsSet[SkolemFunction1[FF2, X]]] = Axiom(IsSet(SkolemFunction1[FF2, X](x)))
+  def isSetF3[X <: AnySet](x: X): Theorem[IsSet[SkolemFunction1[FF3, X]]] = Axiom(IsSet(SkolemFunction1[FF3, X](x)))
+
+  /** `M(u) -> M(v) -> M(w) -> Fnc(x) -> (Rel(x) /\ (((<u, v> in x) /\ (<u, w> in x)) -> (v = w)))` */
+  def functionIff1[X <: AnySet, U <: AnySet, V <: AnySet, W <: AnySet](x: X, u: U, v: V, w: W):
+  Theorem[IsSet[U] ->: IsSet[V] ->: IsSet[W] ->: Fnc[X] ->: (Relation[X] /\ ((Member[OrderedPair[U, V], X] /\ Member[OrderedPair[U, W], X]) ->: (V === W)))] =
+    Axiom(IsSet(u) ->: IsSet(v) ->: IsSet(w) ->: Fnc(x) ->: (Relation(x) /\ (((OrderedPair(u, v) in x) /\ (OrderedPair(u, w) in x)) ->: (v === w))))
+
+  /** `(Rel(x) /\ (((<f1, f2> in x) /\ (<f1, f3> in x)) -> (f2 = f3))) -> Fnc(x)` */
+  def functionIff2[X <: AnySet](x: X):
+  Theorem[(Relation[X] /\ ((Member[OrderedPair[SkolemFunction1[FF1, X], SkolemFunction1[FF2, X]], X] /\ Member[OrderedPair[SkolemFunction1[FF1, X], SkolemFunction1[FF3, X]], X]) ->: (SkolemFunction1[FF2, X] === SkolemFunction1[FF3, X]))) ->: Fnc[X]] = {
+    val f1 = SkolemFunction1[FF1, X](x)
+    val f2 = SkolemFunction1[FF2, X](x)
+    val f3 = SkolemFunction1[FF3, X](x)
+    Axiom((Relation(x) /\ (((OrderedPair(f1, f2) in x) /\ (OrderedPair(f1, f3) in x)) ->: (f2 === f3))) ->: Fnc(x))
+  }
+
+  /** `(<x, y> in Inv(z)) <-> (<y, x> in z)` */
+  def inverseIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Member[OrderedPair[X, Y], Inverse[Z]] <-> Member[OrderedPair[Y, X], Z]] =
+    Axiom((OrderedPair(x, y) in Inverse(z)) <-> (OrderedPair(y, x) in z))
 
   type FR = "r"
   def isSetR[F <: AnySet, Z <: AnySet](f: F, z: Z): Theorem[IsSet[SkolemFunction2[FR, F, Z]]] = Axiom(IsSet(SkolemFunction2[FR, F, Z](f, z)))
@@ -188,7 +221,16 @@ trait NBGRules extends NBGTheory {
   def rangeIff1[F <: AnySet, Z <: AnySet](f: F, z: Z): Theorem[IsSet[Z] ->: Member[Z, Range[F]] ->: Member[OrderedPair[SkolemFunction2[FR, F, Z], Z], F]] =
     Axiom(IsSet(z) ->: (z in Range(f)) ->: (OrderedPair(SkolemFunction2[FR, F, Z](f, z), z) in f))
 
+  type FI = "i"
+  def isSetI[X <: AnySet](x: X): Theorem[IsSet[SkolemFunction1[FI, X]]] = Axiom(IsSet(SkolemFunction1[FI, X](x)))
 
+  /** `M(x) -> (x in I) -> (x = <i(x), i(x)>)` */
+  def identityIff1[X <: AnySet](x: X): Theorem[IsSet[X] ->: Member[X, Identity] ->: (X === OrderedPair[SkolemFunction1[FI, X], SkolemFunction1[FI, X]])] =
+    Axiom(IsSet(x) ->: (x in Identity) ->: (x === OrderedPair(SkolemFunction1[FI, X](x), SkolemFunction1[FI, X](x))))
+
+  /** `M(x) -> M(y) -> (x = <y, y>) -> (x in I)` */
+  def identityIff2[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (X === OrderedPair[Y, Y]) ->: Member[X, Identity]] =
+    Axiom(IsSet(x) ->: IsSet(y) ->: (x === OrderedPair(y, y)) ->: (x in Identity))
 
   /** `M(z) -> (x irr y) <-> (Rel(x) /\ ((z in y) -> ~(<z, z> in x)))` */
   def irreflexiveIff[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[IsSet[Z] ->: (Irreflexive[X, Y] <-> (Relation[X] /\ (Member[Z, Y] ->: ~[Member[OrderedPair[Z, Z], X]])))] =

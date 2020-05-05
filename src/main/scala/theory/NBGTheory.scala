@@ -49,11 +49,15 @@ trait NBGTheory extends FOLTheorems {
   case class Power[A <: AnySet](a: A) extends AnySet
   case class Sum[A <: AnySet](a: A) extends AnySet
 
+  case object Identity extends AnySet
+  type Identity = Identity.type
+
   case class Fnc[A <: AnySet](a: A) extends Formula
 
   case object Infinity extends AnySet
   type Infinity = Infinity.type
 
+  case class Inverse[A <: AnySet](a: A) extends AnySet
   case class Range[A <: AnySet](a: A) extends AnySet
 
   abstract class RelationalProperty[X <: AnySet, Y <: AnySet](x: X, y: Y) extends Formula
