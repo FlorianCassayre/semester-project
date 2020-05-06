@@ -842,11 +842,6 @@ trait NBGTheorems extends NBGRules {
     equalsIsSet(axiomU(PairSet(x, y))(axiomPS(x, y)(sx)(sy)) #/\ sumUnion(x, y)(sx)(sy))
   }
 
-  /** `M(x) -> (x sube y) -> M(y)` */
-  def subsetEqSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: SubsetEqual[X, Y] ->: IsSet[Y]] = assume(IsSet(x), x sube y) { (sx, hyp) =>
-    ???
-  }
-
   /** `M(x) -> M(y) -> M(<x, y>)` */
   def orderedPairSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[OrderedPair[X, Y]]] = {
     ??? // TODO
@@ -1009,4 +1004,57 @@ trait NBGTheorems extends NBGRules {
 
     equalsIsSet(sm #/\ eq)
   }
+
+  /** `M(x) -> (y sube x) -> M(y)` */
+  def subsetEqSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: SubsetEqual[Y, X] ->: IsSet[Y]] = assume(IsSet(x), y sube x) { (sx, hyp) =>
+    equalsIsSet(intersectSet(x, y)(sx) #/\ subsetIntersect(y, x)(hyp))
+  }
+
+  type Russell = Domain[Intersect[-[SkolemConstant[FD]], Identity]]
+  val Russell: Russell = Domain(-SkolemConstant[FD] inter Identity)
+
+  /** `M(x) -> ((x in Russell) <-> ~(x in x))` */
+  def russellIff[X <: AnySet](x: X): Theorem[IsSet[X] ->: (Member[X, Russell] <-> ~[Member[X, X]])] = assume(IsSet(x)) { sx => // x in Y(.) <-> ~(x in x)
+    val d = SkolemConstant[FD]
+    val se = isSetFe(-d inter Identity, x)
+    val e = se.s
+
+    val ~> = assume(x in Domain(-d inter Identity)) { hyp =>
+      val sp = orderedPairSet(x, e)(sx)(se)
+      val p = sp.s
+
+      val (md, id) = intersectIff(-d, Identity, p)(sp)(domainIff2(-d inter Identity, x)(sx)(hyp)).asPair
+
+      equalsIff1(x, e, x)(identityEquals(x, e)(sx)(se)(id)).swap.inverse(axiomB1(x, e)(sx)(se).inverse(complementIff(d, p)(sp)(md)))
+    }
+    val <~ = assume(~(x in x)) { hyp =>
+      val xx = OrderedPair(x, x)
+      val sxx = orderedPairSet(x, x)(sx)(sx)
+
+      val l = complementIff(d, xx)(sxx).swap(axiomB1(x, x)(sx)(sx).swap.inverse(hyp))
+      val r = identityContains(x)(sx)
+
+      domainIff1(-d inter Identity, x, x)(sx)(sx)(intersectIff(-d, Identity, xx)(sxx).swap(l #/\ r))
+    }
+
+    ~> combine <~
+  }
+
+  /** `~M(Russell)` */
+  def russellClass: Theorem[~[IsSet[Russell]]] = {
+    assume(IsSet(Russell)) { hyp =>
+      val rr = Russell in Russell
+      val iff = russellIff(Russell)(hyp)
+      val and = andIff(rr, ~rr).swap(assume(rr ->: ~rr ->: False) { _ =>
+        val trr = mixedDoubleNegationInvert(assume(~rr)(tnrr => (iff.swap.toImplies join assume(rr, ~rr)((h1, h2) => h2.toImplies(h1)))(tnrr)(tnrr)))
+        iff(trr).toImplies(trr)
+      })
+      val (l, r) = and.asPair
+      r.toImplies(l)
+    }.toNot
+  }
+
+  /** `~M(V)` */
+  def universeClass: Theorem[~[IsSet[Universe]]] =
+    assume(IsSet(Universe))(hyp => russellClass.toImplies(subsetEqSet(Universe, Russell)(hyp)(subsetEqUniverse(Russell)))).toNot
 }
