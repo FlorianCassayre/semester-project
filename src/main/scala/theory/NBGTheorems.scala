@@ -321,15 +321,15 @@ trait NBGTheorems extends NBGRules {
   }
 
   implicit class WrapperUnionIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] \/ Member[Z, Y]]) {
-    def toIntersect(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Union[X, Y]]] = unionContains(thm.x.b, thm.y.b, thm.x.a)(sz).swap(thm)
+    def toUnion(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Union[X, Y]]] = unionContains(thm.x.b, thm.y.b, thm.x.a)(sz).swap(thm)
   }
 
   implicit class WrapperDifferenceIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] /\ ~[Member[Z, Y]]]) {
-    def toIntersect(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Difference[X, Y]]] = differenceContains(thm.x.b, thm.y.x.b, thm.x.a)(sz).swap(thm)
+    def toDifference(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, Difference[X, Y]]] = differenceContains(thm.x.b, thm.y.x.b, thm.x.a)(sz).swap(thm)
   }
 
   implicit class WrapperComplementIff[X <: AnySet, Y <: AnySet](thm: Theorem[~[Member[Y, X]]]) {
-    def toIntersect(sy: Theorem[IsSet[Y]]): Theorem[Member[Y, Complement[X]]] = complementIff(thm.x.b, thm.x.a)(sy).swap(thm)
+    def toComplement(sy: Theorem[IsSet[Y]]): Theorem[Member[Y, Complement[X]]] = complementIff(thm.x.b, thm.x.a)(sy).swap(thm)
   }
 
   /** `(x inter y) = (y inter x)` */
@@ -594,6 +594,22 @@ trait NBGTheorems extends NBGRules {
 
   /** `x union (y inter z) = (x union y) inter (x union z)` */
   def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Intersect[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
+
+  /** `(x union -x) = U` */
+  def unionComplementUniverse[X <: AnySet](x: X): Theorem[Union[X, -[X]] === Universe] = {
+    val (z, sz) = zEqPair(x union -x, Universe)
+
+    val ~> = assume(z in (x union -x)) { hyp =>
+      universeContains(z)(sz)
+    }
+    val <~ = assume(z in Universe) { _ =>
+      assume(~(z in x), ~(z in -x)) { (nzx, nznx) =>
+        nzx.toImplies(nznx.map(complementIff(x, z)(sz).swap.toImplies).unduplicate)
+      }.toOr.toUnion(sz)
+    }
+
+    (~> combine <~).toEquals
+  }
 
 
   /** `U({}) = {}` */
@@ -1057,4 +1073,13 @@ trait NBGTheorems extends NBGRules {
   /** `~M(V)` */
   def universeClass: Theorem[~[IsSet[Universe]]] =
     assume(IsSet(Universe))(hyp => russellClass.toImplies(subsetEqSet(Universe, Russell)(hyp)(subsetEqUniverse(Russell)))).toNot
+
+  /** `M(x) -> ~M(-x)` */
+  def complementClass[X <: AnySet](x: X): Theorem[IsSet[X] ->: ~[IsSet[-[X]]]] = assume(IsSet(x)) { sx =>
+    assume(IsSet(-x)) { snx =>
+      val ux = unionSet(x, -x)(sx)(snx)
+      val eq = unionComplementUniverse(x)
+      universeClass.toImplies(equalsIsSet(ux #/\ eq))
+    }.toNot
+  }
 }
