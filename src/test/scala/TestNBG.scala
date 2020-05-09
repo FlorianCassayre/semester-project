@@ -238,4 +238,68 @@ class TestNBG extends ProofTestSuite with NBGTheorems {
   ignore("power singleton empty") {
     powerSingletonEmpty =?= (Power(SingletonSet(EmptySet)) === PairSet(EmptySet, SingletonSet(EmptySet)))
   }
+
+  test("sum union") {
+    sumUnion(x, y) =?= IsSet(x) ->: IsSet(y) ->: (Sum(PairSet(x, y)) === (x union y))
+  }
+
+  test("union set") {
+    unionSet(x, y) =?= IsSet(x) ->: IsSet(y) ->: IsSet(x union y)
+  }
+
+  test("ordered pair set") {
+    orderedPairSet(x, y) =?= IsSet(x) ->: IsSet(y) ->: IsSet(OrderedPair(x, y))
+  }
+
+  test("product subset eq") {
+    productSubsetEq(x, y) =?= (Product(x, y) sube Product(Universe, Universe))
+  }
+
+  test("product relation") {
+    productRelation(x, y) =?= Relation(Product(x, y))
+  }
+
+  test("product contains") {
+    productContains(x, y, u, v) =?= IsSet(u) ->: IsSet(v) ->: ((OrderedPair(u, v) in Product(x, y)) <-> ((u in x) /\ (v in y)))
+  }
+
+  test("identity relation") {
+    identityRelation =?= Relation(Identity)
+  }
+
+  test("identity contains") {
+    identityContains(x) =?= IsSet(x) ->: (OrderedPair(x, x) in Identity)
+  }
+
+  test("identity equals") {
+    identityEquals(x, y) =?= IsSet(x) ->: IsSet(y) ->: (OrderedPair(x, y) in Identity) ->: (x === y)
+  }
+
+  test("intersect function") {
+    intersectFunction(x, y) =?= Fnc(x) ->: Fnc(x inter y)
+  }
+
+  test("intersect set") {
+    intersectSet(x, y) =?= IsSet(x) ->: IsSet(y inter x)
+  }
+
+  test("subset eq set") {
+    subsetEqSet(x, y) =?= IsSet(x) ->: (y sube x) ->: IsSet(y)
+  }
+
+  test("russell iff") {
+    russellIff(x) =?= IsSet(x) ->: ((x in Russell) <-> ~(x in x))
+  }
+
+  test("russell class") {
+    russellClass =?= ~IsSet(Russell)
+  }
+
+  test("universe class") {
+    universeClass =?= ~IsSet(Universe)
+  }
+
+  test("complement class") {
+    complementClass(x) =?= IsSet(x) ->: ~IsSet(-x)
+  }
 }

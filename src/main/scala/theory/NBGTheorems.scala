@@ -859,8 +859,8 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `M(x) -> M(y) -> M(<x, y>)` */
-  def orderedPairSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[OrderedPair[X, Y]]] = {
-    ??? // TODO
+  def orderedPairSet[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: IsSet[OrderedPair[X, Y]]] = assume(IsSet(x), IsSet(y)) { (sx, sy) =>
+    equalsIsSet(pairIsSet(singletonIsSet(sx), pairIsSet(sx, sy)) #/\ orderedPairEq(x, y).swap)
   }
 
   /** `(x * y) sube (V * V)` */
