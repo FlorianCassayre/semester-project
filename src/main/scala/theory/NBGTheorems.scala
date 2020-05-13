@@ -1026,34 +1026,30 @@ trait NBGTheorems extends NBGRules {
     equalsIsSet(intersectSet(x, y)(sx) #/\ subsetIntersect(y, x)(hyp))
   }
 
-  type Russell = Domain[Intersect[-[SkolemConstant[FD]], Identity]]
-  val Russell: Russell = Domain(-SkolemConstant[FD] inter Identity)
-
   /** `M(x) -> ((x in Russell) <-> ~(x in x))` */
-  def russellIff[X <: AnySet](x: X): Theorem[IsSet[X] ->: (Member[X, Russell] <-> ~[Member[X, X]])] = assume(IsSet(x)) { sx => // x in Y(.) <-> ~(x in x)
-    val d = SkolemConstant[FD]
-    val se = isSetFe(-d inter Identity, x)
+  def russellIff[X <: AnySet](x: X): Theorem[IsSet[X] ->: (Member[X, Russell] <-> ~[Member[X, X]])] = assume(IsSet(x)) { sx =>
+    val se = isSetFe(-MemberRelation inter Identity, x)
     val e = se.s
 
-    val ~> = assume(x in Domain(-d inter Identity)) { hyp =>
+    val ~> = assume(x in Domain(-MemberRelation inter Identity)) { hyp =>
       val sp = orderedPairSet(x, e)(sx)(se)
       val p = sp.s
 
-      val (md, id) = intersectIff(-d, Identity, p)(sp)(domainIff2(-d inter Identity, x)(sx)(hyp)).asPair
+      val (md, id) = intersectIff(-MemberRelation, Identity, p)(sp)(domainIff2(-MemberRelation inter Identity, x)(sx)(hyp)).asPair
 
-      equalsIff1(x, e, x)(identityEquals(x, e)(sx)(se)(id)).swap.inverse(axiomB1(x, e)(sx)(se).inverse(complementIff(d, p)(sp)(md)))
+      equalsIff1(x, e, x)(identityEquals(x, e)(sx)(se)(id)).swap.inverse(memberRelationIff(x, e)(sx)(se).inverse(complementIff(MemberRelation, p)(sp)(md)))
     }
     val <~ = assume(~(x in x)) { hyp =>
       val xx = OrderedPair(x, x)
       val sxx = orderedPairSet(x, x)(sx)(sx)
 
-      val l = complementIff(d, xx)(sxx).swap(axiomB1(x, x)(sx)(sx).swap.inverse(hyp))
+      val l = complementIff(MemberRelation, xx)(sxx).swap(memberRelationIff(x, x)(sx)(sx).swap.inverse(hyp))
       val r = identityContains(x)(sx)
 
-      domainIff1(-d inter Identity, x, x)(sx)(sx)(intersectIff(-d, Identity, xx)(sxx).swap(l #/\ r))
+      domainIff1(-MemberRelation inter Identity, x, x)(sx)(sx)(intersectIff(-MemberRelation, Identity, xx)(sxx).swap(l #/\ r))
     }
 
-    ~> combine <~
+    russellEq.toImplies(x) join (~> combine <~)
   }
 
   /** `~M(Russell)` */

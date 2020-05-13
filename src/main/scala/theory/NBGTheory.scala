@@ -35,6 +35,8 @@ trait NBGTheory extends FOLTheorems {
 
   case class OrderedPair[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
 
+  case object MemberRelation extends AnySet
+  type MemberRelation = MemberRelation.type
   case class Intersect[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class Complement[A <: AnySet](a: A) extends AnySet
   case class Domain[A <: AnySet](a: A) extends AnySet
@@ -59,6 +61,9 @@ trait NBGTheory extends FOLTheorems {
 
   case class Inverse[A <: AnySet](a: A) extends AnySet
   case class Range[A <: AnySet](a: A) extends AnySet
+
+  case object Russell extends AnySet
+  type Russell = Russell.type
 
   abstract class RelationalProperty[X <: AnySet, Y <: AnySet](x: X, y: Y) extends Formula
   case class Irreflexive[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
