@@ -1,6 +1,15 @@
 package theory.number
 
-trait NumberTheorems extends NumberRules {
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+import theory.NBGRules._
+import theory.NBGTheorems._
+import theory.number.NumberTheory._
+import theory.number.NumberRules._
+
+object NumberTheorems {
 
   /** Theorem (a) `a = a` */
   def equRefl[A <: Expr](a: A): Theorem[A === A] = {

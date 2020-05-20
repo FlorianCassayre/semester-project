@@ -1,7 +1,8 @@
 import org.scalatest.funsuite.AnyFunSuite
-import theory.fol.FOL
 
-abstract class ProofTestSuite extends AnyFunSuite with FOL {
+import theory.fol.FOL._
+
+abstract class ProofTestSuite extends AnyFunSuite {
 
   private val reflectiveInstanciator: Formula => Theorem[Formula] = {
     val clazz = Axiom.getClass

@@ -1,8 +1,14 @@
 import org.scalatest.Ignore
 import org.scalatest.funsuite.AnyFunSuite
-import theory.NBGTheorems
 
-class TestNBG extends ProofTestSuite with NBGTheorems {
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+import theory.NBGRules._
+import theory.NBGTheorems._
+
+class TestNBG extends ProofTestSuite {
 
   val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
   val (x, y, z, u, v) = (SetVariable["x"], SetVariable["y"], SetVariable["z"], SetVariable["u"], SetVariable["v"])
@@ -95,7 +101,7 @@ class TestNBG extends ProofTestSuite with NBGTheorems {
     intersectAssociative(x, y, z) =?= (((x inter y) inter z) === (x inter (y inter z)))
   }
 
-  ignore("union associative") {
+  test("union associative") {
     unionAssociative(x, y, z) =?= (((x union y) union z) === (x union (y union z)))
   }
 
@@ -127,7 +133,7 @@ class TestNBG extends ProofTestSuite with NBGTheorems {
     unionComplement(x, y) =?= (-(x union y) === (-x inter -y))
   }
 
-  ignore("intersection complement") {
+  test("intersection complement") {
     intersectComplement(x, y) =?= (-(x inter y) === (-x union -y))
   }
 
@@ -139,11 +145,11 @@ class TestNBG extends ProofTestSuite with NBGTheorems {
     universeDifference(x) =?= ((Universe diff x) === -x)
   }
 
-  ignore("double difference") {
+  test("double difference") {
     doubleDifference(x, y) =?= ((x diff (x diff y)) === (x inter y))
   }
 
-  ignore("subset difference") {
+  test("subset difference") {
     subsetDifference(x, y) =?= ((y sube -x) ->: ((x diff y) === x))
   }
 

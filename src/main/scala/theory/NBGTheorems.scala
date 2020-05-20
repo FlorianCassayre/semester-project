@@ -1,6 +1,12 @@
 package theory
 
-trait NBGTheorems extends NBGRules {
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+import theory.NBGRules._
+
+object NBGTheorems {
 
   type ZEq[X <: AnySet, Y <: AnySet] = SkolemFunction2[FA, X, Y]
 
@@ -329,7 +335,7 @@ trait NBGTheorems extends NBGRules {
   }
 
   implicit class WrapperComplementIff[X <: AnySet, Y <: AnySet](thm: Theorem[~[Member[Y, X]]]) {
-    def toComplement(sy: Theorem[IsSet[Y]]): Theorem[Member[Y, Complement[X]]] = complementIff(thm.x.b, thm.x.a)(sy).swap(thm)
+    def toComplement(sy: Theorem[IsSet[Y]]): Theorem[Member[Y, -[X]]] = complementIff(thm.x.b, thm.x.a)(sy).swap(thm)
   }
 
   /** `(x inter y) = (y inter x)` */
@@ -444,7 +450,16 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `(x union y) union z = x union (y union z)` */
-  def unionAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[Union[X, Y], Z] === Union[X, Union[Y, Z]]] = ???
+  def unionAssociative[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[Union[X, Y], Z] === Union[X, Union[Y, Z]]] = {
+    val (w, sw) = zEqPair((x union y) union z, x union (y union z))
+
+    val thm = orAssociativeIff(w in x, w in y, w in z)
+
+    val ~> = assume(w in ((x union y) union z))(h => thm(h.toIff(sw).mapLeft(unionContains(x, y, w)(sw))).mapRight(unionContains(y, z, w)(sw).swap).toUnion(sw))
+    val <~ = assume(w in (x union (y union z)))(h => thm.swap(h.toIff(sw).mapRight(unionContains(y, z, w)(sw))).mapLeft(unionContains(x, y, w)(sw).swap).toUnion(sw))
+
+    (~> combine <~).toEquals
+  }
 
   /** `(x inter x) = x` */
   def intersectIndempotent[X <: AnySet](x: X): Theorem[Intersect[X, X] === X] = {
@@ -532,21 +547,18 @@ trait NBGTheorems extends NBGRules {
 
   /** `-(x inter y) = (-x union -y)` */
   def intersectComplement[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[-[Intersect[X, Y]] === Union[-[X], -[Y]]] = {
-    val (z, sz) = zEqPair(-(x union y), -x inter -y)
+    val (z, sz) = zEqPair(-(x inter y), -x union -y)
 
     val ~> = assume(z in -(x inter y)) { hyp =>
-      val t1 = hyp.toIff(sz).map(intersectIff(x, y, z)(sz).swap.toImplies).toImplies
-      ???
+      notAnd(hyp.toIff(sz).map(intersectIff(x, y, z)(sz).swap.toImplies))
+        .mapLeft(_.toComplement(sz)).mapRight(_.toComplement(sz)).toUnion(sz)
     }
     val <~ = assume(z in (-x union -y)) { hyp =>
-      val t1 = hyp.toIff(sz).mapLeft(complementIff(x, z)(sz).toImplies).mapRight(complementIff(y, z)(sz).toImplies)
-      val t2 = orImplies(t1)
-      val t3 = assume(z in x)(zx => assume(z in y)(zy => t2(#~~(zx))(#~~(zy))))
-      ???
+      andNot(hyp.toIff(sz).mapLeft(complementIff(x, z)(sz).toImplies).mapRight(complementIff(y, z)(sz).toImplies))
+        .map(intersectIff(x, y, z)(sz).toImplies).toComplement(sz)
     }
 
-    //(~> combine <~).toEquals
-    ???
+    (~> combine <~).toEquals
   }
 
   /** `(x diff x) = {}` */
@@ -570,10 +582,32 @@ trait NBGTheorems extends NBGRules {
   }
 
   /** `x diff (x diff y) = (x inter y)` */
-  def doubleDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Difference[X, Difference[X, Y]] === Intersect[X, Y]] = ???
+  def doubleDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[Difference[X, Difference[X, Y]] === Intersect[X, Y]] = {
+    val (z, sz) = zEqPair(x diff (x diff y), x inter y)
+
+    val ~> = assume(z in (x diff (x diff y))) { hyp =>
+      val t = hyp.toIff(sz).mapRight(_.map(differenceContains(x, y, z)(sz).swap.toImplies)).mapRight(notAnd(_))
+      t.mapRight(_.right(mixedDoubleNegation(t.left)).unduplicate).toIntersect(sz)
+    }
+    val <~ = assume(z in (x inter y)) { hyp =>
+      val t1 = hyp.toIff(sz)
+      val t2 = #~~((~(z in x) #\/ #~~(t1.right)).mapRight(_.unduplicate)).map(assume(z in (x diff y))(h => orNot(h.toIff(sz).mapLeft(#~~(_)))))
+      (t1.left #/\ t2).toDifference(sz)
+    }
+
+    (~> combine <~).toEquals
+  }
 
   /** `y sube -x -> (x diff y) = x` */
-  def subsetDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[Y, -[X]] ->: (Difference[X, Y] === X)] = ???
+  def subsetDifference[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[SubsetEqual[Y, -[X]] ->: (Difference[X, Y] === X)] = assume(y sube -x) { hyp =>
+    val (z, sz) = zEqPair(x diff y, x)
+    val t = assume(z in x)(th => (subsetEqIff1(y, -x, z)(hyp) join complementIff(x, z)(sz).toImplies).inverse(#~~(th)))
+
+    val ~> = assume(z in (x diff y))(h => h.toIff(sz).left)
+    val <~ = assume(z in x)(h => (h #/\ t(h)).toDifference(sz))
+
+    (~> combine <~).toEquals
+  }
 
   /** `--x = x` */
   def doubleComplement[X <: AnySet](x: X): Theorem[-[-[X]] === X] = {
@@ -1078,4 +1112,7 @@ trait NBGTheorems extends NBGRules {
       universeClass.toImplies(equalsIsSet(ux #/\ eq))
     }.toNot
   }
+
+  /** `(x We y) -> (x Tot y)` */
+  // TODO
 }

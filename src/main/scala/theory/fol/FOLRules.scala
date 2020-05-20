@@ -2,7 +2,9 @@ package theory.fol
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-trait FOLRules extends FOL {
+import theory.fol.FOL._
+
+object FOLRules {
 
   @deprecated
   def oops[P <: Formula](f: P): Theorem[P] = Axiom(f, dirty = true)
@@ -55,4 +57,18 @@ trait FOLRules extends FOL {
     Axiom(p ->: q, dirty, newRefs)
   }
 
+  def assume[P1 <: Formula, P2 <: Formula, Q <: Formula](p1: P1, p2: P2)(certificate: (Theorem[P1], Theorem[P2]) => Theorem[Q]): Theorem[P1 ->: P2 ->: Q] =
+    assume(p1)(t1 => assume(p2)(t2 => certificate(t1, t2)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: Q] =
+    assume(p1, p2)((t1, t2) => assume(p3)(t3 => certificate(t1, t2, t3)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: Q] =
+    assume(p1, p2, p3)((t1, t2, t3) => assume(p4)(t4 => certificate(t1, t2, t3, t4)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: Q] =
+    assume(p1, p2, p3, p4)((t1, t2, t3, t4) => assume(p5)(t5 => certificate(t1, t2, t3, t4, t5)))
+
+  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, P6 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5], Theorem[P6]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: P6 ->: Q] =
+    assume(p1, p2, p3, p4, p5)((t1, t2, t3, t4, t5) => assume(p6)(t6 => certificate(t1, t2, t3, t4, t5, t6)))
 }

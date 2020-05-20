@@ -1,8 +1,13 @@
 package theory.number
 
-import theory.NBGTheorems
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+import theory.NBGRules._
+import theory.NBGTheorems._
 
-trait NumberTheory extends NBGTheorems {
+object NumberTheory {
 
   sealed abstract class Expr extends Ordinal {
   }

@@ -1,6 +1,9 @@
 package theory.fol
 
-trait FOLTheorems extends FOLRules {
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+
+object FOLTheorems {
 
   // Modus ponens shorthands
   implicit class WrapperImpliesMP[P <: Formula, Q <: Formula](thm: Theorem[P ->: Q]) {
@@ -246,30 +249,96 @@ trait FOLTheorems extends FOLRules {
     impliesToIffRule(~>, <~)
   }
 
-  // --
+  /** `~p /\ ~q` given `~(p \/ q)` */
+  def notOr[P <: Formula, Q <: Formula](thm: Theorem[~[P \/ Q]]): Theorem[~[P] /\ ~[Q]] = thm.formula match {
+    case ~(p \/ q) =>
+      iffCommutative(andIff(~p, ~q))(assume(~p ->: ~q ->: False)(h => notIff(p \/ q)(thm)(impliesOr(h))))
+  }
 
-  def assume[P1 <: Formula, P2 <: Formula, Q <: Formula](p1: P1, p2: P2)(certificate: (Theorem[P1], Theorem[P2]) => Theorem[Q]): Theorem[P1 ->: P2 ->: Q] =
-    assume(p1)(t1 => assume(p2)(t2 => certificate(t1, t2)))
+  /** `~(p \/ q)` given `~p /\ ~q` */
+  def orNot[P <: Formula, Q <: Formula](thm: Theorem[~[P] /\ ~[Q]]): Theorem[~[P \/ Q]] = thm.formula match {
+    case ~(p) /\ ~(q) =>
+      iffCommutative(notIff(p \/ q))(assume(p \/ q)(h => orImplies(h)(andExtractLeft(thm))(andExtractLeft(andCommutative(thm)))))
+  }
 
-  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: Q] =
-    assume(p1, p2)((t1, t2) => assume(p3)(t3 => certificate(t1, t2, t3)))
+  /** `((p \/ q) \/ r) <-> (p \/ (q \/ r))` */
+  def orAssociativeIff[P <: Formula, Q <: Formula, R <: Formula](p: P, q: Q, r: R): Theorem[((P \/ Q) \/ R) <-> ((P \/ (Q \/ R)))] = {
+    val ~> = assume((p \/ q) \/ r) { hyp =>
+      impliesOr(
+        assume(~p, ~(q \/ r)) { (tnp, h) =>
+          val nqnr = notOr(h)
+          impliesTransitive(assume(~p /\ ~q)(orNot), orImplies(hyp))(andCombine(tnp, andExtractLeft(nqnr)))(andExtractLeft(andCommutative(nqnr)))
+        }
+      )
+    }
+    val <~ = assume(p \/ (q \/ r)) { hyp =>
+      impliesOr(
+        assume(~(p \/ q), ~r) { (h1, nr) =>
+          val npnq = notOr(h1)
+          orImplies(hyp)(andExtractLeft(npnq))(orNot(andCombine(andExtractLeft(andCommutative(npnq)), nr)))
+        }
+      )
+    }
 
-  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: Q] =
-    assume(p1, p2, p3)((t1, t2, t3) => assume(p4)(t4 => certificate(t1, t2, t3, t4)))
+    impliesToIffRule(~>, <~)
+  }
 
-  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: Q] =
-    assume(p1, p2, p3, p4)((t1, t2, t3, t4) => assume(p5)(t5 => certificate(t1, t2, t3, t4, t5)))
+  /** `~p \/ ~q` given `~(p /\ q)` */
+  def notAnd[P <: Formula, Q <: Formula](thm: Theorem[~[P /\ Q]]): Theorem[~[P] \/ ~[Q]] = thm.formula match {
+    case ~(p /\ q) =>
+      iffCommutative(orIff(~p, ~q))(
+        iffCommutative(notIff(~(~p) /\ ~(~q)))(
+          assume(~(~p) /\ ~(~q))(h =>
+            notIff(p /\ q)(thm)(andCombine(notUnduplicate(andExtractLeft(h)), notUnduplicate(andExtractLeft(andCommutative(h)))))
+          )
+        )
+      )
+  }
 
-  def assume[P1 <: Formula, P2 <: Formula, P3 <: Formula, P4 <: Formula, P5 <: Formula, P6 <: Formula, Q <: Formula](p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6)(certificate: (Theorem[P1], Theorem[P2], Theorem[P3], Theorem[P4], Theorem[P5], Theorem[P6]) => Theorem[Q]): Theorem[P1 ->: P2 ->: P3 ->: P4 ->: P5 ->: P6 ->: Q] =
-    assume(p1, p2, p3, p4, p5)((t1, t2, t3, t4, t5) => assume(p6)(t6 => certificate(t1, t2, t3, t4, t5, t6)))
+  /** `~(p /\ q)` given `~p \/ ~q` */
+  def andNot[P <: Formula, Q <: Formula](thm: Theorem[~[P] \/ ~[Q]]): Theorem[~[P /\ Q]] = thm.formula match {
+    case ~(p) \/ ~(q) =>
+      iffCommutative(notIff(p /\ q))(
+        assume(p /\ q)(h =>
+          notIff(~(~p) /\ ~(~q))(orIff(~p, ~q)(thm))(andCombine(notDuplicate(andExtractLeft(h)), notDuplicate(andExtractLeft(andCommutative(h)))))
+        )
+      )
+  }
 
   // --
 
   implicit def theoremToFormula[F <: Formula](thm: Theorem[F]): F = thm.formula
 
+  //implicit def assumptionToFunction[P <: Formula, Q <: Formula](f: Theorem[P ->: Q]): Theorem[P] => Theorem[Q] = p => f(p)
+
   //implicit def functionToTheorem[P <: Formula, Q <: Formula](f: P => Theorem[Q]): Theorem[P ->: Q] = assume(p)
 
   def #~~[P <: Formula](thm: Theorem[P]): Theorem[~[~[P]]] = notDuplicate(thm)
+
+  trait WrapperBase[P <: Formula] {
+    protected def thm: Theorem[P]
+  }
+
+  trait WrapperBinary[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBase[F[P, Q]] {
+    protected def leftFormula: P
+    protected def rightFormula: Q
+  }
+
+  trait LeftMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[F[M, Q]]
+    final def mapLeft[M <: Formula](f: Theorem[P] => Theorem[M]): Theorem[F[M, Q]] = mapLeft(assume(leftFormula)(f))
+  }
+
+  trait RightMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[F[P, M]]
+    final def mapRight[M <: Formula](f: Theorem[Q] => Theorem[M]): Theorem[F[P, M]] = mapRight(assume(rightFormula)(f))
+  }
+
+  trait EitherMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends LeftMappable[F, P, Q] with RightMappable[F, P, Q]
+
+  trait SymmetricProperty[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
+    def swap: Theorem[F[Q, P]]
+  }
 
   implicit class WrapperFormula[P <: Formula](f: P) {
     def #\/[Q <: Formula](that: Theorem[Q]): Theorem[P \/ Q] = orCommutative(orAddRight(that, f))
@@ -285,9 +354,12 @@ trait FOLTheorems extends FOLRules {
     def #<->[Q <: Formula](that: Theorem[Q]): Theorem[P <-> Q] = andToIff(andCombine(thm, that))
   }
 
-  implicit class WrapperIff[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]) {
+  implicit class WrapperIff[P <: Formula, Q <: Formula](override val thm: Theorem[P <-> Q]) extends SymmetricProperty[<->, P, Q] {
+    override protected def leftFormula: P = thm.x
+    override protected def rightFormula: Q = thm.y
+
     def join[R <: Formula](that: Theorem[Q <-> R]): Theorem[P <-> R] = iffTransitive(thm, that)
-    def swap: Theorem[Q <-> P] = iffCommutative(thm)
+    override def swap: Theorem[Q <-> P] = iffCommutative(thm)
     def toImplies: Theorem[P ->: Q] = FOLTheorems.this.toImplies(thm)
     def inverse: Theorem[~[P] <-> ~[Q]] = iffAddNot(thm)
   }
@@ -301,8 +373,11 @@ trait FOLTheorems extends FOLRules {
     def uninverse: Theorem[P <-> Q] = iffRemoveNot(thm)
   }
 
+  implicit def iffToImplies[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]): Theorem[P ->: Q] = thm.toImplies
+
   implicit class WrapperImplies[P <: Formula, Q <: Formula](thm: Theorem[P ->: Q]) {
     def join[R <: Formula](that: Theorem[Q ->: R]): Theorem[P ->: R] = impliesTransitive(thm, that)
+    def join[R <: Formula](f: Theorem[Q] => Theorem[R]): Theorem[P ->: R] = join(assume(thm.y)(f))
     def inverse: Theorem[~[Q] ->: ~[P]] = impliesInverse(thm)
     def combine(that: Theorem[Q ->: P]): Theorem[P <-> Q] = impliesToIffRule(thm, that)
   }
@@ -310,13 +385,16 @@ trait FOLTheorems extends FOLRules {
     def uninverse: Theorem[Q ->: P] = impliesUninverse(thm)
   }
 
-  implicit class WrapperAnd[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]) {
+  implicit class WrapperAnd[P <: Formula, Q <: Formula](override val thm: Theorem[P /\ Q]) extends EitherMappable[/\, P, Q] with SymmetricProperty[/\, P, Q] {
+    override protected def leftFormula: P = thm.x
+    override protected def rightFormula: Q = thm.y
+
     def left: Theorem[P] = andExtractLeft(thm)
     def right: Theorem[Q] = andExtractLeft(andCommutative(thm))
     def asPair: (Theorem[P], Theorem[Q]) = (left, right)
-    def swap: Theorem[Q /\ P] = andCommutative(thm)
-    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
-    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
+    override def swap: Theorem[Q /\ P] = andCommutative(thm)
+    override def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
+    override def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
     def toImplies: Theorem[(P ->: Q ->: False) ->: False] = andIff(thm.formula.x, thm.formula.y)(thm)
     def toIff: Theorem[P <-> Q] = andToIff(thm)
   }
@@ -329,13 +407,16 @@ trait FOLTheorems extends FOLRules {
     def rearrange: Theorem[(P /\ Q) /\ R] = andAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
   }
 
-  implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {
+  implicit class WrapperOr[P <: Formula, Q <: Formula](override val thm: Theorem[P \/ Q]) extends EitherMappable[\/, P, Q] with SymmetricProperty[\/, P, Q] {
+    override protected def leftFormula: P = thm.x
+    override protected def rightFormula: Q = thm.y
+
     def left(proof: Theorem[Q ->: False]): Theorem[P] = mixedDoubleNegationInvert(swapAssumptions(orImplies(thm))(iffCommutative(notIff(proof.formula.x))(proof)))
     def right(proof: Theorem[P ->: False]): Theorem[Q] = mixedDoubleNegationInvert(orImplies(thm)(iffCommutative(notIff(proof.formula.x))(proof)))
-    def swap: Theorem[Q \/ P] = orCommutative(thm)
-    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] =
+    override def swap: Theorem[Q \/ P] = orCommutative(thm)
+    override def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] =
       impliesOr(swapAssumptions(swapAssumptions(orImplies(thm)) join assume(~thm.x ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation)))
-    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
+    override def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
       impliesOr(orImplies(thm) join assume(~thm.y ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation))
     def reduce[R <: Formula](left: Theorem[P ->: R])(right: Theorem[Q ->: R]): Theorem[R] = orCase(thm, left, right)
     //def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???

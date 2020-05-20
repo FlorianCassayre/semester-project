@@ -1,6 +1,11 @@
 package theory
 
-trait NBGRules extends NBGTheory {
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+
+object NBGRules {
 
   // Equality and sets
 
@@ -257,5 +262,6 @@ trait NBGRules extends NBGTheory {
   /** `(x tot y) <-> ((x irr y) /\ (x tr y) /\ (x con y))` */
   def totalIff[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[TotalOrder[X, Y] <-> (Irreflexive[X, Y] /\ Transitive[X, Y] /\ Connected[X, Y])] =
     Axiom((x tot y) <-> ((x irr y) /\ (x tr y) /\ (x con y)))
+
 
 }

@@ -1,10 +1,10 @@
 package theory
 
-import theory.fol.FOLTheorems
+import theory.fol.FOL._
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
 
-trait NBGTheory extends FOLTheorems {
-
-  override type Theory = AnySet
+object NBGTheory {
 
   sealed abstract class AnySet {
   }
@@ -71,7 +71,7 @@ trait NBGTheory extends FOLTheorems {
   case class PartialOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
   case class Connected[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
   case class TotalOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
-  //case class WellOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
+  case class WellOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
 
   case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
   case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet

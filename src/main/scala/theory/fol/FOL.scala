@@ -2,11 +2,13 @@ package theory.fol
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-trait FOL {
+import theory.NBGTheory
+
+object FOL {
 
   type Id = String
 
-  type Theory
+  type Theory = NBGTheory.AnySet
 
   trait Named {
     val id: Id

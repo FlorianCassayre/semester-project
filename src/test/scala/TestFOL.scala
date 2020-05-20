@@ -1,14 +1,17 @@
 import org.scalatest.funsuite.AnyFunSuite
-import theory.fol.FOLTheorems
+import theory.fol.FOL._
+import theory.fol.FOLRules
+import theory.fol.FOLRules._
+import theory.fol.FOLTheorems._
 
-class TestFOL extends ProofTestSuite with FOLTheorems {
+class TestFOL extends ProofTestSuite {
 
   val (p, q, r) = (Variable["p"], Variable["q"], Variable["r"])
 
   test("illegal escape") {
     var illegal: Theorem[False] = null
 
-    val legal = assume(False) { f =>
+    val legal = FOLRules.assume(False) { f =>
       illegal = f // Illegal escape
       f
     }
@@ -22,7 +25,7 @@ class TestFOL extends ProofTestSuite with FOLTheorems {
       val str = illegal.toString // toString
     }
     assertThrows[IllegalStateException] {
-      val t = assume(False)(identity)
+      val t = FOLRules.assume(False)(identity)
       t(illegal) // Composition
     }
   }
@@ -30,8 +33,8 @@ class TestFOL extends ProofTestSuite with FOLTheorems {
   test("illegal escape nested") {
     var illegal: Theorem[False] = null
 
-    assume(False) { f1 =>
-      assume(False) { f2 =>
+    FOLRules.assume(False) { f1 =>
+      FOLRules.assume(False) { f2 =>
         illegal = f2
         f2
       }
