@@ -419,6 +419,7 @@ object FOLTheorems {
     override def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
       impliesOr(orImplies(thm) join assume(~thm.y ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation))
     def reduce[R <: Formula](left: Theorem[P ->: R])(right: Theorem[Q ->: R]): Theorem[R] = orCase(thm, left, right)
+    def reduce[R <: Formula](leftF: Theorem[P] => Theorem[R])(rightF: Theorem[Q] => Theorem[R]): Theorem[R] = reduce(assume(leftFormula)(leftF))(assume(rightFormula)(rightF))
     //def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
     def toImpliesNot: Theorem[~[P] ->: ~[Q] ->: False] = orImplies(thm)
   }

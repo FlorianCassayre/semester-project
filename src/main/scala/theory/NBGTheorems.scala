@@ -624,10 +624,41 @@ object NBGTheorems {
   }
 
   /** `x inter (y union z) = (x inter y) union (x inter z)` */
-  def intersectDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[X, Union[Y, Z]] === Union[Intersect[X, Y], Intersect[X, Z]]] = ???
+  def intersectDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Intersect[X, Union[Y, Z]] === Union[Intersect[X, Y], Intersect[X, Z]]] = {
+    val (w, sw) = zEqPair(x inter (y union z), (x inter y) union (x inter z))
+
+    val ~> = assume(w in (x inter (y union z))) { hyp =>
+      val (l, r) = hyp.toIff(sw).mapRight(_.toIff(sw)).asPair
+      r.mapLeft(t => (l #/\ t).toIntersect(sw)).mapRight(t => (l #/\ t).toIntersect(sw)).toUnion(sw)
+    }
+    val <~ = assume(w in ((x inter y) union (x inter z))) { hyp =>
+      val t = hyp.toIff(sw).mapLeft(_.toIff(sw)).mapRight(_.toIff(sw))
+      val l = t.reduce(_.left)(_.left)
+      val r = t.mapLeft(_.right).mapRight(_.right)
+      (l #/\ r).mapRight(_.toUnion(sw)).toIntersect(sw)
+    }
+
+    (~> combine <~).toEquals
+  }
 
   /** `x union (y inter z) = (x union y) inter (x union z)` */
-  def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Intersect[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = ???
+  def unionDistributivity[X <: AnySet, Y <: AnySet, Z <: AnySet](x: X, y: Y, z: Z): Theorem[Union[X, Intersect[Y, Z]] === Intersect[Union[X, Y], Union[X, Z]]] = {
+    val (w, sw) = zEqPair(x union (y inter z), (x union y) inter (x union z))
+
+    val ~> = assume(w in (x union (y inter z))) { hyp =>
+      val t = hyp.toIff(sw).mapRight(_.toIff(sw))
+      (t.mapRight(_.left).toUnion(sw) #/\ t.mapRight(_.right).toUnion(sw)).toIntersect(sw)
+    }
+    val <~ = assume(w in ((x union y) inter (x union z))) { hyp =>
+      val t = hyp.toIff(sw).mapLeft(_.toIff(sw)).mapRight(_.toIff(sw))
+      val (l, r) = t.asPair
+      assume(~(w in x), ~(w in (y inter z)))((h1, h2) =>
+        h2.toImplies((l.right(h1.toImplies) #/\ r.right(h1.toImplies)).toIntersect(sw))
+      ).toOr.toUnion(sw)
+    }
+
+    (~> combine <~).toEquals
+  }
 
   /** `(x union -x) = U` */
   def unionComplementUniverse[X <: AnySet](x: X): Theorem[Union[X, -[X]] === Universe] = {
