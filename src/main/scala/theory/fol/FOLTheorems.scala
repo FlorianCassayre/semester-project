@@ -305,6 +305,36 @@ object FOLTheorems {
       )
   }
 
+  /** `(p /\ q) <-> ~(~p \/ ~q)` */
+  def andIffAlt[P <: Formula, Q <: Formula](p: P, q: Q): Theorem[(P /\ Q) <-> ~[~[P] \/ ~[Q]]] = {
+    val ~> = assume(p /\ q) { hyp =>
+      iffCommutative(notIff(~p \/ ~q))(impliesTransitive(
+        toImplies(orIff(~p, ~q)),
+        notIff(~((~(~p) /\ ~(~q))))(iffCommutative(doubleNotIff(~(~p) /\ ~(~q)))(
+          andCombine(iffCommutative(doubleNotIff(p))(andExtractLeft(hyp)), iffCommutative(doubleNotIff(q))(andExtractLeft(andCommutative(hyp))))
+        ))
+      ))
+    }
+    val <~ = assume(~(~p \/ ~q)) { hyp =>
+      val t = notUnduplicate(iffAddNot(orIff(~p, ~q))(hyp))
+      andCombine(notUnduplicate(andExtractLeft(t)), notUnduplicate(andExtractLeft(andCommutative(t))))
+    }
+
+    impliesToIffRule(~>, <~)
+  }
+
+  /** `~p \/ q` given `p -> q` */
+  def impliesToOr[P <: Formula, Q <: Formula](thm: Theorem[P ->: Q]): Theorem[~[P] \/ Q] =
+    impliesOr(assume(~(~thm.x), ~thm.y) { (nnp, nq) =>
+      nq.toImplies(thm(nnp.unduplicate))
+    })
+
+  /** `p -> q` given `~p \/ q` */
+  def orToImplies[P <: Formula, Q <: Formula](thm: Theorem[~[P] \/ Q]): Theorem[P ->: Q] = {
+    val (p, q) = (thm.x.x, thm.y)
+    assume(p)(tp => orCase(thm, assume(~p)(np => exFalso(q)(notIff(p)(np)(tp))), assume(q)(identity)))
+  }
+
   // --
 
   implicit def theoremToFormula[F <: Formula](thm: Theorem[F]): F = thm.formula

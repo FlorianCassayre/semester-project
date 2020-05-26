@@ -78,6 +78,7 @@ object FOL {
     }
     def isValid: Boolean = context.invalid.forall(!_.get())
     def isDirty: Boolean = context.dirty
+    def as[P <: Formula]: Theorem[P] = asInstanceOf[Theorem[P]]
     override def toString: String = formula.toString
   }
   object Axiom {
