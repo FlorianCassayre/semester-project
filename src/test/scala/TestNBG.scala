@@ -161,11 +161,11 @@ class TestNBG extends ProofTestSuite {
     universeComplement =?= (-Universe === EmptySet)
   }
 
-  ignore("intersection distributivity") {
+  test("intersection distributivity") {
     intersectDistributivity(x, y, z) =?= ((x inter (y union z)) === ((x inter y) union (x inter z)))
   }
 
-  ignore("union distributivity") {
+  test("union distributivity") {
     unionDistributivity(x, y, z) =?= ((x union (y inter z)) === ((x union y) inter (x union z)))
   }
 
@@ -241,7 +241,7 @@ class TestNBG extends ProofTestSuite {
     powerEmpty =?= (Power(EmptySet) === SingletonSet(EmptySet))
   }
 
-  ignore("power singleton empty") {
+  test("power singleton empty") {
     powerSingletonEmpty =?= (Power(SingletonSet(EmptySet)) === PairSet(EmptySet, SingletonSet(EmptySet)))
   }
 

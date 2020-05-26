@@ -867,21 +867,26 @@ object NBGTheorems {
     val (z, sz) = zEqPair(Power(SingletonSet(EmptySet)), PairSet(EmptySet, SingletonSet(EmptySet)))
 
     val ~> = assume(z in Power(SingletonSet(EmptySet))) { hyp =>
-      val (z2, sz2) = zEqPair(z, SingletonSet(EmptySet))
+      val or = assume(~(z === EmptySet), ~(z === SingletonSet(EmptySet))) { (h1, h2) =>
+        val t1 = powerIff(z, SingletonSet(EmptySet))(sz)(hyp)
 
-      val t1 = powerIff(z, SingletonSet(EmptySet))(sz)(hyp)
-      val l = subsetEqIff1(z, SingletonSet(EmptySet), z2)(t1) join singletonEquals(z2, EmptySet)(sz2)(axiomNS).toImplies
+        val (a, sa) = zEqPair(z, EmptySet)
 
-      assume(~(z === EmptySet)) { h1 =>
-        assume(~(z === SingletonSet(EmptySet))) { h2 =>
-          val t1 = powerIff(z, SingletonSet(EmptySet))(sz)(hyp)
-          val l = subsetEqIff1(z, SingletonSet(EmptySet), z2)(t1) join singletonEquals(z2, EmptySet)(sz2)(axiomNS).toImplies
+        val taz = h1
+          .map(equalsIff2(z, EmptySet))
+          .map(assume((a in z) <-> False)(_ join (assume(False)(_(a in EmptySet)) combine axiomN(a)(sa).toImplies)))
+          .map(assume((a in z) ->: False)(_ combine assume(False)(_(a in z)))).toImplies.unduplicate
+        val tez = axiomT(a, EmptySet, z)(singletonEquals(a, EmptySet)(sa)(axiomNS)(subsetEqIff1(z, SingletonSet(EmptySet), a)(t1)(taz)))(taz)
 
-          ???
-        }
+        val (b, sb) = zEqPair(z, SingletonSet(EmptySet))
+
+        val l = subsetEqIff1(z, SingletonSet(EmptySet), b)(t1)
+        val r = assume(b in SingletonSet(EmptySet))(h => axiomT(b, EmptySet, z)(singletonEquals(b, EmptySet)(sb)(axiomNS)(h)).swap(tez))
+
+        h2.map(equalsIff2(z, SingletonSet(EmptySet))).toImplies(l combine r)
       }
 
-      oops(z in PairSet(EmptySet, SingletonSet(EmptySet)))
+      axiomP(EmptySet, SingletonSet(EmptySet), z)(axiomNS)(singletonIsSet(axiomNS))(sz).swap(or.toOr)
     }
     val <~ = assume(z in PairSet(EmptySet, SingletonSet(EmptySet))) { hyp =>
       val sb = isSetFb(z, SingletonSet(EmptySet))
@@ -895,8 +900,7 @@ object NBGTheorems {
       powerIff(z, SingletonSet(EmptySet))(sz).swap(subsetEqIff2(z, SingletonSet(EmptySet))(~>))
     }
 
-    //(~> combine <~).toEquals
-    ???
+    (~> combine <~).toEquals
   }
 
   /** `M(x) -> M(y) -> (U({x, y}) = (x union y))` */

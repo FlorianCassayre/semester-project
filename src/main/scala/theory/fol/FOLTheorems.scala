@@ -433,6 +433,10 @@ object FOLTheorems {
     def unduplicate: Theorem[P] = notUnduplicate(thm)
   }
 
+  implicit class WrapperImpliesFF[P <: Formula](thm: Theorem[(P ->: False) ->: False]) {
+    def unduplicate: Theorem[P] = doubleNegation(thm.x.x)(thm)
+  }
+
   implicit class WrapperImpliesF[P <: Formula](thm: Theorem[P ->: False]) {
     def toNot: Theorem[~[P]] = iffCommutative(notIff(thm.formula.x))(thm)
   }
