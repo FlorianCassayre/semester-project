@@ -87,11 +87,13 @@ object Tableaux {
             case True => tableaux(facts, tail)
             case ~(~(p)) => tableaux(facts, thm.as[~[~[P]]].unduplicate +: tail)
             case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y)(thm.as[SubsetEqual[R, S]]) +: tail)
-            case Member(z, Complement(x)) => tableaux(facts, thm.as[Member[Q, -[R]]].toIff(oops(IsSet(z))) +: tail)
-            case Member(z, Intersect(x, y)) => alphaConsequence(thm.as[Member[Q, Intersect[R, S]]].toIff(oops(IsSet(z))))
-            case Member(z, Union(x, y)) => betaBranch(thm.as[Member[Q, Union[R, S]]].toIff(oops(IsSet(z))))
-            case Member(z, Difference(x, y)) => alphaConsequence(thm.as[Member[Q, Difference[R, S]]].toIff(oops(IsSet(z))))
-            case Member(z, EmptySet) => axiomN(z)(oops(IsSet(z))).toImplies(thm.as[Member[Q, EmptySet]])
+            case Member(z, Complement(x)) => tableaux(facts, thm.as[Member[Q, -[R]]].toIff +: tail)
+            case Member(z, Intersect(x, y)) => alphaConsequence(thm.as[Member[Q, Intersect[R, S]]].toIff)
+            case Member(z, Union(x, y)) => betaBranch(thm.as[Member[Q, Union[R, S]]].toIff)
+            case Member(z, Difference(x, y)) => alphaConsequence(thm.as[Member[Q, Difference[R, S]]].toIff)
+            case Member(z, EmptySet) =>
+              val t = thm.as[Member[Q, EmptySet]]
+              axiomN(z)(t.asSet).toImplies(t)
             case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z)(thm.as[Member[Q, SingletonSet[R]]]) +: tail)
             case Member(z, PairSet(x, y)) => betaBranch(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z)))(thm.as[Member[Q, PairSet[R, S]]]))
             case Member(z, Universe) => tableaux(facts.withTheorem(thm), tail)
@@ -106,7 +108,7 @@ object Tableaux {
             case Member(x, y) if !facts.map.contains(thm.formula) && facts.notMembershipsRightArg.contains(y) =>
               val l = thm.as[Member[Q, R]]
               val rs = facts.notMembershipsRightArg(y).map(_.as[~[Member[Q, S]]])
-              tableaux(facts.withTheorem(l), rs.map(r => oops(~(l.a === r.x.a))).toSeq ++ tail)
+              tableaux(facts.withTheorem(l), rs.map(r => oops(~(l.a === r.x.a))).toSeq ++ tail) // TODO
             case ~(f) =>
               f match {
                 case atom if facts.map.contains(atom) => thm.as[~[X]].toImplies(facts.map(atom))

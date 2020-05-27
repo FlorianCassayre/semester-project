@@ -85,6 +85,10 @@ object NBGTheorems {
     def toEquals: Theorem[X === Y] = equalsIff2(x, y)(thm)
   }
 
+  implicit class WrapperMember[X <: AnySet, Y <: AnySet](thm: Theorem[Member[X, Y]]) {
+    def asSet: Theorem[IsSet[X]] = isSetIff2(thm.a, thm.b)(thm)
+  }
+
   /** M(x) -> M(y) -> ({x, y} = {y, x}) */
   def pairCommutative[X <: AnySet, Y <: AnySet](x: X, y: Y): Theorem[IsSet[X] ->: IsSet[Y] ->: (PairSet[X, Y] === PairSet[Y, X])] = {
     type F = ZEq[PairSet[X, Y], PairSet[Y, X]]
@@ -307,19 +311,19 @@ object NBGTheorems {
   }
 
   implicit class WrapperIntersect[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Intersect[X, Y]]]) {
-    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] /\ Member[Z, Y]] = intersectIff(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+    def toIff: Theorem[Member[Z, X] /\ Member[Z, Y]] = intersectIff(thm.b.a, thm.b.b, thm.a)(thm.asSet)(thm)
   }
 
   implicit class WrapperUnion[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Union[X, Y]]]) {
-    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] \/ Member[Z, Y]] = unionContains(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+    def toIff: Theorem[Member[Z, X] \/ Member[Z, Y]] = unionContains(thm.b.a, thm.b.b, thm.a)(thm.asSet)(thm)
   }
 
   implicit class WrapperDifference[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, Difference[X, Y]]]) {
-    def toIff(sz: Theorem[IsSet[Z]]): Theorem[Member[Z, X] /\ ~[Member[Z, Y]]] = differenceContains(thm.b.a, thm.b.b, thm.a)(sz)(thm)
+    def toIff: Theorem[Member[Z, X] /\ ~[Member[Z, Y]]] = differenceContains(thm.b.a, thm.b.b, thm.a)(thm.asSet)(thm)
   }
 
   implicit class WrapperComplement[X <: AnySet, Y <: AnySet](thm: Theorem[Member[Y, Complement[X]]]) {
-    def toIff(sy: Theorem[IsSet[Y]]): Theorem[~[Member[Y, X]]] = complementIff(thm.b.a, thm.a)(sy)(thm)
+    def toIff: Theorem[~[Member[Y, X]]] = complementIff(thm.b.a, thm.a)(thm.asSet)(thm)
   }
 
   implicit class WrapperIntersectIff[X <: AnySet, Y <: AnySet, Z <: AnySet](thm: Theorem[Member[Z, X] /\ Member[Z, Y]]) {
@@ -455,8 +459,8 @@ object NBGTheorems {
 
     val thm = orAssociativeIff(w in x, w in y, w in z)
 
-    val ~> = assume(w in ((x union y) union z))(h => thm(h.toIff(sw).mapLeft(unionContains(x, y, w)(sw))).mapRight(unionContains(y, z, w)(sw).swap).toUnion(sw))
-    val <~ = assume(w in (x union (y union z)))(h => thm.swap(h.toIff(sw).mapRight(unionContains(y, z, w)(sw))).mapLeft(unionContains(x, y, w)(sw).swap).toUnion(sw))
+    val ~> = assume(w in ((x union y) union z))(h => thm(h.toIff.mapLeft(unionContains(x, y, w)(sw))).mapRight(unionContains(y, z, w)(sw).swap).toUnion(sw))
+    val <~ = assume(w in (x union (y union z)))(h => thm.swap(h.toIff.mapRight(unionContains(y, z, w)(sw))).mapLeft(unionContains(x, y, w)(sw).swap).toUnion(sw))
 
     (~> combine <~).toEquals
   }
@@ -550,11 +554,11 @@ object NBGTheorems {
     val (z, sz) = zEqPair(-(x inter y), -x union -y)
 
     val ~> = assume(z in -(x inter y)) { hyp =>
-      notAnd(hyp.toIff(sz).map(intersectIff(x, y, z)(sz).swap.toImplies))
+      notAnd(hyp.toIff.map(intersectIff(x, y, z)(sz).swap.toImplies))
         .mapLeft(_.toComplement(sz)).mapRight(_.toComplement(sz)).toUnion(sz)
     }
     val <~ = assume(z in (-x union -y)) { hyp =>
-      andNot(hyp.toIff(sz).mapLeft(complementIff(x, z)(sz).toImplies).mapRight(complementIff(y, z)(sz).toImplies))
+      andNot(hyp.toIff.mapLeft(complementIff(x, z)(sz).toImplies).mapRight(complementIff(y, z)(sz).toImplies))
         .map(intersectIff(x, y, z)(sz).toImplies).toComplement(sz)
     }
 
@@ -586,12 +590,12 @@ object NBGTheorems {
     val (z, sz) = zEqPair(x diff (x diff y), x inter y)
 
     val ~> = assume(z in (x diff (x diff y))) { hyp =>
-      val t = hyp.toIff(sz).mapRight(_.map(differenceContains(x, y, z)(sz).swap.toImplies)).mapRight(notAnd(_))
+      val t = hyp.toIff.mapRight(_.map(differenceContains(x, y, z)(sz).swap.toImplies)).mapRight(notAnd(_))
       t.mapRight(_.right(mixedDoubleNegation(t.left)).unduplicate).toIntersect(sz)
     }
     val <~ = assume(z in (x inter y)) { hyp =>
-      val t1 = hyp.toIff(sz)
-      val t2 = #~~((~(z in x) #\/ #~~(t1.right)).mapRight(_.unduplicate)).map(assume(z in (x diff y))(h => orNot(h.toIff(sz).mapLeft(#~~(_)))))
+      val t1 = hyp.toIff
+      val t2 = #~~((~(z in x) #\/ #~~(t1.right)).mapRight(_.unduplicate)).map(assume(z in (x diff y))(h => orNot(h.toIff.mapLeft(#~~(_)))))
       (t1.left #/\ t2).toDifference(sz)
     }
 
@@ -603,7 +607,7 @@ object NBGTheorems {
     val (z, sz) = zEqPair(x diff y, x)
     val t = assume(z in x)(th => (subsetEqIff1(y, -x, z)(hyp) join complementIff(x, z)(sz).toImplies).inverse(#~~(th)))
 
-    val ~> = assume(z in (x diff y))(h => h.toIff(sz).left)
+    val ~> = assume(z in (x diff y))(h => h.toIff.left)
     val <~ = assume(z in x)(h => (h #/\ t(h)).toDifference(sz))
 
     (~> combine <~).toEquals
@@ -628,11 +632,11 @@ object NBGTheorems {
     val (w, sw) = zEqPair(x inter (y union z), (x inter y) union (x inter z))
 
     val ~> = assume(w in (x inter (y union z))) { hyp =>
-      val (l, r) = hyp.toIff(sw).mapRight(_.toIff(sw)).asPair
+      val (l, r) = hyp.toIff.mapRight(_.toIff).asPair
       r.mapLeft(t => (l #/\ t).toIntersect(sw)).mapRight(t => (l #/\ t).toIntersect(sw)).toUnion(sw)
     }
     val <~ = assume(w in ((x inter y) union (x inter z))) { hyp =>
-      val t = hyp.toIff(sw).mapLeft(_.toIff(sw)).mapRight(_.toIff(sw))
+      val t = hyp.toIff.mapLeft(_.toIff).mapRight(_.toIff)
       val l = t.reduce(_.left)(_.left)
       val r = t.mapLeft(_.right).mapRight(_.right)
       (l #/\ r).mapRight(_.toUnion(sw)).toIntersect(sw)
@@ -646,11 +650,11 @@ object NBGTheorems {
     val (w, sw) = zEqPair(x union (y inter z), (x union y) inter (x union z))
 
     val ~> = assume(w in (x union (y inter z))) { hyp =>
-      val t = hyp.toIff(sw).mapRight(_.toIff(sw))
+      val t = hyp.toIff.mapRight(_.toIff)
       (t.mapRight(_.left).toUnion(sw) #/\ t.mapRight(_.right).toUnion(sw)).toIntersect(sw)
     }
     val <~ = assume(w in ((x union y) inter (x union z))) { hyp =>
-      val t = hyp.toIff(sw).mapLeft(_.toIff(sw)).mapRight(_.toIff(sw))
+      val t = hyp.toIff.mapLeft(_.toIff).mapRight(_.toIff)
       val (l, r) = t.asPair
       assume(~(w in x), ~(w in (y inter z)))((h1, h2) =>
         h2.toImplies((l.right(h1.toImplies) #/\ r.right(h1.toImplies)).toIntersect(sw))
@@ -1052,8 +1056,8 @@ object NBGTheorems {
 
     val (rx, irx) = functionIff1(x, f1, f2, f3)(sf1)(sf2)(sf3)(hyp).asPair
     val t = assume((OrderedPair(f1, f2) in xy) /\ (OrderedPair(f1, f3) in xy)) { h =>
-      val l = h.left.toIff(orderedPairSet(f1, f2)(sf1)(sf2)).left
-      val r = h.right.toIff(orderedPairSet(f1, f3)(sf1)(sf3)).left
+      val l = h.left.toIff.left
+      val r = h.right.toIff.left
       irx(l #/\ r)
     }
 
@@ -1078,7 +1082,7 @@ object NBGTheorems {
       intersectIff(y, x, u)(su).swap(uy #/\ ux)
     }
     val <~ = assume(u in (y inter x)) { hyp =>
-      val (l, r) = hyp.toIff(su).asPair
+      val (l, r) = hyp.toIff.asPair
       val l1 = identityContains(u)(su)
       val r1 = productContains(y, y, u, u)(su)(su).swap(l #/\ l)
       val lr = intersectIff(Identity, Product(y, y), OrderedPair(u, u))(orderedPairSet(u, u)(su)(su)).swap(l1 #/\ r1)
