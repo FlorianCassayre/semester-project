@@ -46,6 +46,7 @@ object Tableaux {
           case ~(Member(x, y)) => copy(map = updatedMap,
             notMembershipsRightArg = notMembershipsRightArg + (y -> (notMembershipsRightArg.getOrElse(y, Set.empty) + thm.as[~[Member[Q, R]]]))
           )
+          case other => copy(map = updatedMap)
         }
       }
     }
@@ -86,11 +87,14 @@ object Tableaux {
             case True => tableaux(facts, tail)
             case ~(~(p)) => tableaux(facts, thm.as[~[~[P]]].unduplicate +: tail)
             case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y)(thm.as[SubsetEqual[R, S]]) +: tail)
+            case Member(z, Complement(x)) => tableaux(facts, thm.as[Member[Q, -[R]]].toIff(oops(IsSet(z))) +: tail)
             case Member(z, Intersect(x, y)) => alphaConsequence(thm.as[Member[Q, Intersect[R, S]]].toIff(oops(IsSet(z))))
             case Member(z, Union(x, y)) => betaBranch(thm.as[Member[Q, Union[R, S]]].toIff(oops(IsSet(z))))
             case Member(z, Difference(x, y)) => alphaConsequence(thm.as[Member[Q, Difference[R, S]]].toIff(oops(IsSet(z))))
             case Member(z, EmptySet) => axiomN(z)(oops(IsSet(z))).toImplies(thm.as[Member[Q, EmptySet]])
+            case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z)(thm.as[Member[Q, SingletonSet[R]]]) +: tail)
             case Member(z, PairSet(x, y)) => betaBranch(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z)))(thm.as[Member[Q, PairSet[R, S]]]))
+            case Member(z, Universe) => tableaux(facts.withTheorem(thm), tail)
             case x === y if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(x) =>
               val eq = thm.as[R === S]
               val mbs = facts.membershipsRightArg(x).map(_.as[Member[Q, R]])
@@ -113,11 +117,14 @@ object Tableaux {
                 case False => tableaux(facts, tail)
                 case True => thm.as[~[True]].toImplies(truth)
                 case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y).inverse(thm.as[~[SubsetEqual[R, S]]]) +: tail)
+                case Member(z, Complement(x)) => tableaux(facts, complementIff(x, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, -[R]]]]).unduplicate +: tail)
                 case Member(z, Intersect(x, y)) => betaBranch(notAnd(intersectIff(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Intersect[R, S]]]])))
                 case Member(z, Union(x, y)) => alphaConsequence(notOr(unionContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Union[R, S]]]])))
                 case Member(z, Difference(x, y)) => betaBranch(notAnd(differenceContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Difference[R, S]]]])))
-                case Member(z, EmptySet) => truth
+                case Member(z, EmptySet) => tableaux(facts.withTheorem(thm), tail)
+                case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z).inverse(thm.as[~[Member[Q, SingletonSet[R]]]]) +: tail)
                 case Member(z, PairSet(x, y)) => alphaConsequence(notOr(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z))).inverse(thm.as[~[Member[Q, PairSet[R, S]]]])))
+                case Member(z, Universe) => thm.as[~[Member[Q, Universe]]].toImplies(universeContains(z)(oops(IsSet(z))))
                 case x === y => tableaux(facts, equalsIff2(x, y).inverse(thm.as[~[R === S]]) +: tail) // TODO: convert to branch directly
                 case Member(x, y) if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(y) =>
                   val ls = facts.membershipsRightArg(y).map(_.as[Member[Q, S]])
