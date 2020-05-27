@@ -73,10 +73,24 @@ object NBGTheory {
   case class TotalOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
   case class WellOrder[X <: AnySet, Y <: AnySet](x: X, y: Y) extends RelationalProperty[X, Y](x, y)
 
-  case class SkolemConstant[I <: String]()(implicit v: ValueOf[I]) extends AnySet
-  case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit v: ValueOf[I]) extends AnySet
-  case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit v: ValueOf[I]) extends AnySet
-  case class SkolemFunction3[I <: Id, A <: AnySet, B <: AnySet, C <: AnySet](a: A, b: B, c: C)(implicit v: ValueOf[I]) extends AnySet
+
+  abstract class SkolemFunction[I <: String] extends AnySet {
+    protected val v: ValueOf[I]
+    def name: I = v.value
+  }
+
+  case class SkolemConstant[I <: String]()(implicit protected val v: ValueOf[I]) extends SkolemFunction[I] {
+    override def toString: String = v.value.toString
+  }
+  case class SkolemFunction1[I <: Id, A <: AnySet](a: A)(implicit val v: ValueOf[I]) extends SkolemFunction[I] {
+    override def toString: String = s"${v.value}($a)"
+  }
+  case class SkolemFunction2[I <: Id, A <: AnySet, B <: AnySet](a: A, b: B)(implicit val v: ValueOf[I]) extends SkolemFunction[I] {
+    override def toString: String = s"${v.value}($a,$b)"
+  }
+  case class SkolemFunction3[I <: Id, A <: AnySet, B <: AnySet, C <: AnySet](a: A, b: B, c: C)(implicit val v: ValueOf[I]) extends SkolemFunction[I] {
+    override def toString: String = s"${v.value}($a,$b,$c)"
+  }
 
   abstract class Ordinal extends AnySet // Further work
 

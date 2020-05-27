@@ -106,9 +106,12 @@ object Tableaux {
               val eqs = facts.equalitiesLeftArg(y).map(_.as[R === S])
               tableaux(facts.withTheorem(mb), eqs.map(eq => equalsIff1(y, eq.b, x)(eq)(mb)).toSeq ++ tail)
             case Member(x, y) if !facts.map.contains(thm.formula) && facts.notMembershipsRightArg.contains(y) =>
-              val l = thm.as[Member[Q, R]]
-              val rs = facts.notMembershipsRightArg(y).map(_.as[~[Member[Q, S]]])
-              tableaux(facts.withTheorem(l), rs.map(r => oops(~(l.a === r.x.a))).toSeq ++ tail) // TODO
+              val l = thm.as[Member[R, Q]]
+              val rs = facts.notMembershipsRightArg(y).map(_.as[~[Member[S, Q]]])
+              tableaux(facts.withTheorem(l), rs.map { ri =>
+                val (q, r, s) = (l.b, l.a, ri.x.a)
+                axiomT(r, s, q).inverse(assume((r in q) <-> (s in q))(h => ri.toImplies(h(l))).toNot)
+              }.toSeq ++ tail)
             case ~(f) =>
               f match {
                 case atom if facts.map.contains(atom) => thm.as[~[X]].toImplies(facts.map(atom))
@@ -119,19 +122,33 @@ object Tableaux {
                 case False => tableaux(facts, tail)
                 case True => thm.as[~[True]].toImplies(truth)
                 case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y).inverse(thm.as[~[SubsetEqual[R, S]]]) +: tail)
-                case Member(z, Complement(x)) => tableaux(facts, complementIff(x, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, -[R]]]]).unduplicate +: tail)
-                case Member(z, Intersect(x, y)) => betaBranch(notAnd(intersectIff(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Intersect[R, S]]]])))
-                case Member(z, Union(x, y)) => alphaConsequence(notOr(unionContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Union[R, S]]]])))
-                case Member(z, Difference(x, y)) => betaBranch(notAnd(differenceContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Difference[R, S]]]])))
+                case Member(z, Complement(x)) => betaBranch(notDefinition(complementIff(x, z), thm.as[~[Member[Q, -[R]]]]))
+                case Member(z, Intersect(x, y)) => betaBranch(notDefinition(intersectIff(x, y, z), thm.as[~[Member[Q, Intersect[R, S]]]]))
+                case Member(z, Union(x, y)) => betaBranch(notDefinition(unionContains(x, y, z), thm.as[~[Member[Q, Union[R, S]]]]))
+                case Member(z, Difference(x, y)) => betaBranch(notDefinition(differenceContains(x, y, z), thm.as[~[Member[Q, Difference[R, S]]]]))
                 case Member(z, EmptySet) => tableaux(facts.withTheorem(thm), tail)
                 case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z).inverse(thm.as[~[Member[Q, SingletonSet[R]]]]) +: tail)
                 case Member(z, PairSet(x, y)) => alphaConsequence(notOr(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z))).inverse(thm.as[~[Member[Q, PairSet[R, S]]]])))
-                case Member(z, Universe) => thm.as[~[Member[Q, Universe]]].toImplies(universeContains(z)(oops(IsSet(z))))
-                case x === y => tableaux(facts, equalsIff2(x, y).inverse(thm.as[~[R === S]]) +: tail) // TODO: convert to branch directly
+                case Member(z, Universe) => tableaux(facts, universeContains(z).inverse(thm.as[~[Member[Q, Universe]]]) +: tail) // TODO?
+                case x === y =>
+                  val t = equalsIff2(x, y)
+                  tableaux(facts, equalsIff2(x, y).inverse(thm.as[~[R === S]]) +: tail) // TODO: convert to branch directly
                 case Member(x, y) if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(y) =>
-                  val ls = facts.membershipsRightArg(y).map(_.as[Member[Q, S]])
-                  val r = thm.as[~[Member[Q, R]]]
-                  tableaux(facts.withTheorem(r), ls.map(l => oops(~(l.a === r.x.a))).toSeq ++ tail)
+                  val ls = facts.membershipsRightArg(y).map(_.as[Member[R, Q]])
+                  val ri = thm.as[~[Member[S, Q]]]
+                  tableaux(facts.withTheorem(ri), ls.map { l =>
+                    val (q, r, s) = (ri.x.b, l.a, ri.x.a)
+                    axiomT(r, s, q).inverse(assume((r in q) <-> (s in q))(h => ri.toImplies(h(l))).toNot)
+                  }.toSeq ++ tail)
+                case IsSet(x) =>
+                  val skolemOpt: Option[Theorem[IsSet[_ <: AnySet]]] = x match {
+                    case f@SkolemFunction2(a, b) if f.name == valueOf[FA] => Some(isSetFa(a, b))
+                    // TODO
+                    case _ => None
+                  }
+
+                  skolemOpt.map(skolem => thm.as[~[IsSet[_ <: AnySet]]].toImplies(skolem))
+                      .getOrElse(tableaux(facts.withTheorem(thm), tail))
                 case _ => tableaux(facts.withTheorem(thm), tail)
               }
             // TODO: cut rule

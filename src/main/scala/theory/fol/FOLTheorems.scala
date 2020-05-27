@@ -335,6 +335,12 @@ object FOLTheorems {
     assume(p)(tp => orCase(thm, assume(~p)(np => exFalso(q)(notIff(p)(np)(tp))), assume(q)(identity)))
   }
 
+  /** `~r \/ ~q` given `r -> (p <-> q)` and `~p` */
+  def notDefinition[P <: Formula, Q <: Formula, R <: Formula](iff: Theorem[R ->: (P <-> Q)], np: Theorem[~[P]]): Theorem[~[R] \/ ~[Q]] = {
+    val (p, q, r) = (np.x, iff.y.y, iff.x)
+    impliesOr(assume(~(~r), ~(~q))((nr, nq) => notIff(p)(np)(iffCommutative(iff(notUnduplicate(nr)))(notUnduplicate(nq)))))
+  }
+
   // --
 
   implicit def theoremToFormula[F <: Formula](thm: Theorem[F]): F = thm.formula
