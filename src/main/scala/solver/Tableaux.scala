@@ -3,6 +3,9 @@ package solver
 import theory.fol.FOL._
 import theory.fol.FOLRules._
 import theory.fol.FOLTheorems._
+import theory.NBGTheory._
+import theory.NBGRules._
+import theory.NBGTheorems._
 
 object Tableaux {
 
@@ -15,15 +18,44 @@ object Tableaux {
     type X = Formula
     type Y = Formula
 
+    type Q = AnySet
+    type R = AnySet
+    type S = AnySet
+
     // Normally a union type between False and True
     type Result = Formula
+
+    case class Facts(
+                      map: Map[Formula, AnyTheorem] = Map.empty,
+                      equalitiesLeftArg: Map[AnySet, Set[Theorem[Equals[_ <: AnySet, _ <: AnySet]]]] = Map.empty,
+                      membershipsRightArg: Map[AnySet, Set[Theorem[Member[_ <: AnySet, _ <: AnySet]]]] = Map.empty,
+                      notMembershipsRightArg: Map[AnySet, Set[Theorem[_ <: ~[Member[AnySet, AnySet]]]]] = Map.empty
+    ) {
+      def withTheorem(thm: AnyTheorem): Facts = {
+        val updatedMap = map + (thm.formula -> thm)
+        thm.formula match {
+          case x === y =>
+            val t = thm.as[R === S]
+            val ts = t.swap
+            val firstUpdate = equalitiesLeftArg + (x -> (equalitiesLeftArg.getOrElse(x, Set.empty) + t))
+            val secondUpdate = firstUpdate + (y -> (firstUpdate.getOrElse(y, Set.empty) + ts))
+            copy(map = updatedMap + (ts.formula -> ts), equalitiesLeftArg = secondUpdate)
+          case Member(x, y) => copy(map = updatedMap,
+            membershipsRightArg = membershipsRightArg + (y -> (membershipsRightArg.getOrElse(y, Set.empty) + thm.as[Member[Q, R]]))
+          )
+          case ~(Member(x, y)) => copy(map = updatedMap,
+            notMembershipsRightArg = notMembershipsRightArg + (y -> (notMembershipsRightArg.getOrElse(y, Set.empty) + thm.as[~[Member[Q, R]]]))
+          )
+        }
+      }
+    }
 
     def result(f: Result): Boolean = f match {
       case False => false
       case True => true
     }
 
-    def tableaux(facts: Map[Formula, AnyTheorem], thms: Seq[AnyTheorem]): Theorem[Result] = {
+    def tableaux(facts: Facts, thms: Seq[AnyTheorem]): Theorem[Result] = {
       def alphaConsequence[L <: Formula, R <: Formula](and: Theorem[L /\ R]): Theorem[Result] = {
         val (left, right) = and.asPair
         tableaux(facts, left +: right +: thms.tail)
@@ -41,34 +73,67 @@ object Tableaux {
       thms match {
         case thm +: tail =>
 
+          // TODO: prove oops'
           thm.formula match {
+            case atom if facts.map.contains(~atom) => facts.map(~atom).as[~[X]].toImplies(thm)
             case p /\ q => alphaConsequence(thm.as[X /\ Y])
             case p \/ q => betaBranch(thm.as[X \/ Y])
             case p ->: q => betaBranch(impliesToOr(thm.as[X ->: Y]))
             case p <-> q =>
               val t = thm.as[X <-> Y]
               alphaConsequence(t.toImplies #/\ t.swap.toImplies)
+            case False => thm.as[False]
+            case True => tableaux(facts, tail)
             case ~(~(p)) => tableaux(facts, thm.as[~[~[P]]].unduplicate +: tail)
+            case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y)(thm.as[SubsetEqual[R, S]]) +: tail)
+            case Member(z, Intersect(x, y)) => alphaConsequence(thm.as[Member[Q, Intersect[R, S]]].toIff(oops(IsSet(z))))
+            case Member(z, Union(x, y)) => betaBranch(thm.as[Member[Q, Union[R, S]]].toIff(oops(IsSet(z))))
+            case Member(z, Difference(x, y)) => alphaConsequence(thm.as[Member[Q, Difference[R, S]]].toIff(oops(IsSet(z))))
+            case Member(z, EmptySet) => axiomN(z)(oops(IsSet(z))).toImplies(thm.as[Member[Q, EmptySet]])
+            case Member(z, PairSet(x, y)) => betaBranch(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z)))(thm.as[Member[Q, PairSet[R, S]]]))
+            case x === y if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(x) =>
+              val eq = thm.as[R === S]
+              val mbs = facts.membershipsRightArg(x).map(_.as[Member[Q, R]])
+              tableaux(facts.withTheorem(eq), mbs.map(mb => equalsIff1(x, y, mb.a)(eq)(mb)).toSeq ++ tail)
+            case Member(x, y) if !facts.map.contains(thm.formula) && facts.equalitiesLeftArg.contains(y) =>
+              val mb = thm.as[Member[Q, R]]
+              val eqs = facts.equalitiesLeftArg(y).map(_.as[R === S])
+              tableaux(facts.withTheorem(mb), eqs.map(eq => equalsIff1(y, eq.b, x)(eq)(mb)).toSeq ++ tail)
+            case Member(x, y) if !facts.map.contains(thm.formula) && facts.notMembershipsRightArg.contains(y) =>
+              val l = thm.as[Member[Q, R]]
+              val rs = facts.notMembershipsRightArg(y).map(_.as[~[Member[Q, S]]])
+              tableaux(facts.withTheorem(l), rs.map(r => oops(~(l.a === r.x.a))).toSeq ++ tail)
             case ~(f) =>
               f match {
+                case atom if facts.map.contains(atom) => thm.as[~[X]].toImplies(facts.map(atom))
                 case p /\ q => betaBranch(notAnd(thm.as[~[X /\ Y]]))
                 case p \/ q => alphaConsequence(notOr(thm.as[~[~[X] \/ ~[Y]]]))
                 case p ->: q => alphaConsequence(notOr(thm.as[~[X ->: Y]].map(assume(~p \/ q)(h => orToImplies(h)))).mapLeft(_.unduplicate))
                 case p <-> q => betaBranch(notAnd(assume((p ->: q) /\ (q ->: p))(h => thm.as[~[X <-> Y]].toImplies(h.left combine h.right)).toNot))
                 case False => tableaux(facts, tail)
                 case True => thm.as[~[True]].toImplies(truth)
-                case atom => facts.get(atom).map(thm.as[~[X]].toImplies.apply).getOrElse(tableaux(facts + (thm.formula -> thm), tail))
+                case SubsetEqual(x, y) => tableaux(facts, subsetIntersect(x, y).inverse(thm.as[~[SubsetEqual[R, S]]]) +: tail)
+                case Member(z, Intersect(x, y)) => betaBranch(notAnd(intersectIff(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Intersect[R, S]]]])))
+                case Member(z, Union(x, y)) => alphaConsequence(notOr(unionContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Union[R, S]]]])))
+                case Member(z, Difference(x, y)) => betaBranch(notAnd(differenceContains(x, y, z)(oops(IsSet(z))).inverse(thm.as[~[Member[Q, Difference[R, S]]]])))
+                case Member(z, EmptySet) => truth
+                case Member(z, PairSet(x, y)) => alphaConsequence(notOr(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z))).inverse(thm.as[~[Member[Q, PairSet[R, S]]]])))
+                case x === y => tableaux(facts, equalsIff2(x, y).inverse(thm.as[~[R === S]]) +: tail) // TODO: convert to branch directly
+                case Member(x, y) if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(y) =>
+                  val ls = facts.membershipsRightArg(y).map(_.as[Member[Q, S]])
+                  val r = thm.as[~[Member[Q, R]]]
+                  tableaux(facts.withTheorem(r), ls.map(l => oops(~(l.a === r.x.a))).toSeq ++ tail)
+                case _ => tableaux(facts.withTheorem(thm), tail)
               }
-            case False => thm.as[False]
-            case True => tableaux(facts, tail)
-            case atom => facts.get(~atom).map(_.as[~[X]].toImplies.apply(thm)).getOrElse(tableaux(facts + (thm.formula -> thm), tail))
+            // TODO: cut rule
+            case _ => tableaux(facts.withTheorem(thm), tail)
           }
 
         case _ => truth // No more inputs
       }
     }
 
-    val res = assume(~p)(np => tableaux(Map.empty, Seq(np)))
+    val res = assume(~p)(np => tableaux(Facts(), Seq(np)))
     if(result(res.y)) {
       None
     } else {

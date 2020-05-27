@@ -1,5 +1,6 @@
 import theory.fol.FOL._
 import solver.Tableaux._
+import theory.NBGTheory._
 
 class TestTableaux extends ProofTestSuite {
 

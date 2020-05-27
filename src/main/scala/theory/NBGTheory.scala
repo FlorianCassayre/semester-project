@@ -83,9 +83,13 @@ object NBGTheory {
   final class ExtendedSet[S <: AnySet](set: S) {
     // http://asciimath.org/
     def ===[T <: AnySet](that: T): S === T = Equals(set, that)
+    def =!=[T <: AnySet](that: T): ~[S === T] = ~Equals(set, that)
     def in[T <: AnySet](that: T): Member[S, T] = Member(set, that)
+    def notin[T <: AnySet](that: T): ~[Member[S, T]] = ~Member(set, that)
     def sub[T <: AnySet](that: T): SubsetStrict[S, T] = SubsetStrict(set, that)
+    def notsub[T <: AnySet](that: T): ~[SubsetStrict[S, T]] = ~SubsetStrict(set, that)
     def sube[T <: AnySet](that: T): SubsetEqual[S, T] = SubsetEqual(set, that)
+    def notsube[T <: AnySet](that: T): ~[SubsetEqual[S, T]] = ~SubsetEqual(set, that)
     def inter[T <: AnySet](that: T): Intersect[S, T] = Intersect(set, that)
     def unary_- : -[S] = Complement(set)
     def union[T <: AnySet](that: T): Union[S, T] = Union(set, that)
