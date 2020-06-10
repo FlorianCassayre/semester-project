@@ -358,31 +358,6 @@ object FOLTheorems {
 
   def #~~[P <: Formula](thm: Theorem[P]): Theorem[~[~[P]]] = notDuplicate(thm)
 
-  trait WrapperBase[P <: Formula] {
-    protected def thm: Theorem[P]
-  }
-
-  trait WrapperBinary[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBase[F[P, Q]] {
-    protected def leftFormula: P
-    protected def rightFormula: Q
-  }
-
-  trait LeftMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
-    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[F[M, Q]]
-    final def mapLeft[M <: Formula](f: Theorem[P] => Theorem[M]): Theorem[F[M, Q]] = mapLeft(assume(leftFormula)(f))
-  }
-
-  trait RightMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
-    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[F[P, M]]
-    final def mapRight[M <: Formula](f: Theorem[Q] => Theorem[M]): Theorem[F[P, M]] = mapRight(assume(rightFormula)(f))
-  }
-
-  trait EitherMappable[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends LeftMappable[F, P, Q] with RightMappable[F, P, Q]
-
-  trait SymmetricProperty[F[_ <: Formula, _ <: Formula] <: Formula, P <: Formula, Q <: Formula] extends WrapperBinary[F, P, Q] {
-    def swap: Theorem[F[Q, P]]
-  }
-
   implicit class WrapperFormula[P <: Formula](f: P) {
     def #\/[Q <: Formula](that: Theorem[Q]): Theorem[P \/ Q] = orCommutative(orAddRight(that, f))
     def #->:[Q <: Formula](that: Theorem[Q]): Theorem[P ->: Q] = assume(f)(_ => that)
@@ -397,23 +372,25 @@ object FOLTheorems {
     def #<->[Q <: Formula](that: Theorem[Q]): Theorem[P <-> Q] = andToIff(andCombine(thm, that))
   }
 
-  implicit class WrapperIff[P <: Formula, Q <: Formula](override val thm: Theorem[P <-> Q]) extends SymmetricProperty[<->, P, Q] {
-    override protected def leftFormula: P = thm.x
-    override protected def rightFormula: Q = thm.y
-
+  implicit class WrapperIff[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]) {
     def join[R <: Formula](that: Theorem[Q <-> R]): Theorem[P <-> R] = iffTransitive(thm, that)
-    override def swap: Theorem[Q <-> P] = iffCommutative(thm)
+    def swap: Theorem[Q <-> P] = iffCommutative(thm)
     def toImplies: Theorem[P ->: Q] = FOLTheorems.this.toImplies(thm)
     def inverse: Theorem[~[P] <-> ~[Q]] = iffAddNot(thm)
   }
   implicit class WrapperIffN[P <: Formula, Q <: Formula](thm: Theorem[P <-> ~[Q]]) {
-    def swapNot: Theorem[~[P] <-> Q] = iffSwapNot(thm)
+    def swapNotLeft: Theorem[~[P] <-> Q] = iffSwapNot(thm)
   }
   implicit class WrapperNIff[P <: Formula, Q <: Formula](thm: Theorem[~[P] <-> Q]) {
-    def swapNot: Theorem[P <-> ~[Q]] = iffCommutative(iffSwapNot(iffCommutative(thm)))
+    def swapNotRight: Theorem[P <-> ~[Q]] = iffCommutative(iffSwapNot(iffCommutative(thm)))
   }
   implicit class WrapperNIffN[P <: Formula, Q <: Formula](thm: Theorem[~[P] <-> ~[Q]]) {
     def uninverse: Theorem[P <-> Q] = iffRemoveNot(thm)
+  }
+  implicit class WrapperNotIff[P <: Formula, Q <: Formula](thm: Theorem[~[P <-> Q]]) {
+    private val (p, q) = (thm.x.x, thm.x.y)
+    //def toIffNotLeft: Theorem[~[P] <-> Q] = ???
+    //def toIffNotRight: Theorem[P <-> ~[Q]] = ???
   }
 
   implicit def iffToImplies[P <: Formula, Q <: Formula](thm: Theorem[P <-> Q]): Theorem[P ->: Q] = thm.toImplies
@@ -423,56 +400,74 @@ object FOLTheorems {
     def join[R <: Formula](f: Theorem[Q] => Theorem[R]): Theorem[P ->: R] = join(assume(thm.y)(f))
     def inverse: Theorem[~[Q] ->: ~[P]] = impliesInverse(thm)
     def combine(that: Theorem[Q ->: P]): Theorem[P <-> Q] = impliesToIffRule(thm, that)
+    def toOrNotLeft: Theorem[~[P] \/ Q] = impliesToOr(thm)
   }
   implicit class WrapperNImpliesN[P <: Formula, Q <: Formula](thm: Theorem[~[P] ->: ~[Q]]) {
     def uninverse: Theorem[Q ->: P] = impliesUninverse(thm)
   }
+  implicit class WrapperNotImplies[P <: Formula, Q <: Formula](thm: Theorem[~[P ->: Q]]) {
+    def toAndNotRight: Theorem[P /\ ~[Q]] = notImpliesToAnd(thm)
+  }
 
-  implicit class WrapperAnd[P <: Formula, Q <: Formula](override val thm: Theorem[P /\ Q]) extends EitherMappable[/\, P, Q] with SymmetricProperty[/\, P, Q] {
-    override protected def leftFormula: P = thm.x
-    override protected def rightFormula: Q = thm.y
-
+  implicit class WrapperAnd[P <: Formula, Q <: Formula](thm: Theorem[P /\ Q]) {
     def left: Theorem[P] = andExtractLeft(thm)
     def right: Theorem[Q] = andExtractLeft(andCommutative(thm))
     def asPair: (Theorem[P], Theorem[Q]) = (left, right)
-    override def swap: Theorem[Q /\ P] = andCommutative(thm)
-    override def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
-    override def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
+    def swap: Theorem[Q /\ P] = andCommutative(thm)
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M /\ Q] = andCombine(map(left), right)
+    def mapLeft[M <: Formula](f: Theorem[P] => Theorem[M]): Theorem[M /\ Q] = mapLeft(assume(thm.x)(f))
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P /\ M] = andCombine(left, map(right))
+    def mapRight[M <: Formula](f: Theorem[Q] => Theorem[M]): Theorem[P /\ M] = mapRight(assume(thm.y)(f))
     def toImplies: Theorem[(P ->: Q ->: False) ->: False] = andIff(thm.formula.x, thm.formula.y)(thm)
     def toIff: Theorem[P <-> Q] = andToIff(thm)
+    def toNotOrNot: Theorem[~[~[P] \/ ~[Q]]] = andIffAlt(thm.x, thm.y)(thm)
   }
-
   implicit class WrapperAndParen1[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[(P /\ Q) /\ R]) {
-    def rearrange: Theorem[P /\ (Q /\ R)] = andAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
+    def rearrangeRight: Theorem[P /\ (Q /\ R)] = andAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
   }
-
   implicit class WrapperAndParen2[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[P /\ (Q /\ R)]) {
-    def rearrange: Theorem[(P /\ Q) /\ R] = andAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
+    def rearrangeLeft: Theorem[(P /\ Q) /\ R] = andAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
+  }
+  implicit class WrapperNotAnd[P <: Formula, Q <: Formula](thm: Theorem[~[P /\ Q]]) {
+    def toOrNot: Theorem[~[P] \/ ~[Q]] = notAnd(thm)
+  }
+  implicit class WrapperAndNot[P <: Formula, Q <: Formula](thm: Theorem[~[P] /\ ~[Q]]) {
+    def toNotOr: Theorem[~[P \/ Q]] = orNot(thm)
+  }
+  implicit class WrapperNotAndNot[P <: Formula, Q <: Formula](thm: Theorem[~[~[P] /\ ~[Q]]]) {
+    def toOr: Theorem[P \/ Q] = iffCommutative(orIff(thm.x.x.x, thm.x.y.x))(thm)
   }
 
-  implicit class WrapperOr[P <: Formula, Q <: Formula](override val thm: Theorem[P \/ Q]) extends EitherMappable[\/, P, Q] with SymmetricProperty[\/, P, Q] {
-    override protected def leftFormula: P = thm.x
-    override protected def rightFormula: Q = thm.y
-
+  implicit class WrapperOr[P <: Formula, Q <: Formula](thm: Theorem[P \/ Q]) {
     def left(proof: Theorem[Q ->: False]): Theorem[P] = mixedDoubleNegationInvert(swapAssumptions(orImplies(thm))(iffCommutative(notIff(proof.formula.x))(proof)))
     def right(proof: Theorem[P ->: False]): Theorem[Q] = mixedDoubleNegationInvert(orImplies(thm)(iffCommutative(notIff(proof.formula.x))(proof)))
-    override def swap: Theorem[Q \/ P] = orCommutative(thm)
-    override def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] =
+    def swap: Theorem[Q \/ P] = orCommutative(thm)
+    def mapLeft[M <: Formula](map: Theorem[P ->: M]): Theorem[M \/ Q] =
       impliesOr(swapAssumptions(swapAssumptions(orImplies(thm)) join assume(~thm.x ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation)))
-    override def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
+    def mapLeft[M <: Formula](f: Theorem[P] => Theorem[M]): Theorem[M \/ Q] = mapLeft(assume(thm.x)(f))
+    def mapRight[M <: Formula](map: Theorem[Q ->: M]): Theorem[P \/ M] =
       impliesOr(orImplies(thm) join assume(~thm.y ->: False)(mixedDoubleNegationInvert) join map join assume(map.y)(mixedDoubleNegation))
+    def mapRight[M <: Formula](f: Theorem[Q] => Theorem[M]): Theorem[P \/ M] = mapRight(assume(thm.y)(f))
     def reduce[R <: Formula](left: Theorem[P ->: R])(right: Theorem[Q ->: R]): Theorem[R] = orCase(thm, left, right)
-    def reduce[R <: Formula](leftF: Theorem[P] => Theorem[R])(rightF: Theorem[Q] => Theorem[R]): Theorem[R] = reduce(assume(leftFormula)(leftF))(assume(rightFormula)(rightF))
+    def reduce[R <: Formula](leftF: Theorem[P] => Theorem[R])(rightF: Theorem[Q] => Theorem[R]): Theorem[R] = reduce(assume(thm.x)(leftF))(assume(thm.y)(rightF))
     //def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
     def toImpliesNot: Theorem[~[P] ->: ~[Q] ->: False] = orImplies(thm)
+    def toNotAndNot: Theorem[~[~[P] /\ ~[Q]]] = orIff(thm.x, thm.y)(thm)
   }
-
   implicit class WrapperOrParen1[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[(P \/ Q) \/ R]) {
-    def rearrange: Theorem[P \/ (Q \/ R)] = orAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
+    def rearrangeRight: Theorem[P \/ (Q \/ R)] = orAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
   }
-
   implicit class WrapperOrParen2[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[P \/ (Q \/ R)]) {
-    def rearrange: Theorem[(P \/ Q) \/ R] = orAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
+    def rearrangeLeft: Theorem[(P \/ Q) \/ R] = orAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
+  }
+  implicit class WrapperNotOr[P <: Formula, Q <: Formula](thm: Theorem[~[P \/ Q]]) {
+    def toAndNot: Theorem[~[P] /\ ~[Q]] = notOr(thm)
+  }
+  implicit class WrapperOrNot[P <: Formula, Q <: Formula](thm: Theorem[~[P] \/ ~[Q]]) {
+    def toNotAnd: Theorem[~[P /\ Q]] = andNot(thm)
+  }
+  implicit class WrapperNotOrNot[P <: Formula, Q <: Formula](thm: Theorem[~[~[P] \/ ~[Q]]]) {
+    def toAnd: Theorem[P /\ Q] = iffCommutative(andIffAlt(thm.x.x.x, thm.x.y.x))(thm)
   }
 
   implicit class WrapperNot[P <: Formula](thm: Theorem[~[P]]) {

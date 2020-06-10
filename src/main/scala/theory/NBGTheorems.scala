@@ -71,7 +71,7 @@ object NBGTheorems {
     private val (x, y) = (thm.a, thm.b)
     def join[Z <: AnySet](that: Theorem[Y === Z]): Theorem[X === Z] = equalsTransitive(thm, that)
     def swap: Theorem[Y === X] = equalsSymmetric(thm)
-    def toImplies[Z <: AnySet](z: Z): Theorem[Member[Z, X] <-> Member[Z, Y]] = equalsIff1(x, y, z)(thm)
+    def toIff[Z <: AnySet](z: Z): Theorem[Member[Z, X] <-> Member[Z, Y]] = equalsIff1(x, y, z)(thm)
   }
 
   implicit class WrapperAnySet[X <: AnySet](x: X) {
@@ -429,7 +429,7 @@ object NBGTheorems {
     }
     val <~ = assume((x union y) === y) { hyp =>
       val (z, sz) = (SkolemFunction2[FB, X, Y](x, y), isSetFb(x, y))
-      subsetEqIff2(x, y)(assume(z in x)(h => (unionContains(x, y, z)(sz).swap join hyp.toImplies(z))(h #\/ (z in y))))
+      subsetEqIff2(x, y)(assume(z in x)(h => (unionContains(x, y, z)(sz).swap join hyp.toIff(z))(h #\/ (z in y))))
     }
 
     ~> combine <~
@@ -699,7 +699,7 @@ object NBGTheorems {
 
     val ~> = assume(z in Sum(SingletonSet(x))) { hyp =>
       val (zq, qsx) = sumIff1(SingletonSet(x), z)(sz)(hyp).asPair
-      singletonEquals(sq.s, x)(sq)(sx)(qsx).toImplies(z)(zq)
+      singletonEquals(sq.s, x)(sq)(sx)(qsx).toIff(z)(zq)
     }
     val <~ = assume(z in x)(hyp => sumIff2(SingletonSet(x), x, z)(sx)(sz)(hyp #/\ singletonEquals(x, x)(sx)(sx).swap(x.reflexive)))
 
@@ -757,7 +757,7 @@ object NBGTheorems {
     }
     val <~ = assume(x === EmptySet) { hyp =>
       val z = isSetFb(x, EmptySet).s
-      subsetEqIff2(x, EmptySet)(hyp.toImplies(z).toImplies)
+      subsetEqIff2(x, EmptySet)(hyp.toIff(z).toImplies)
     }
 
     ~> combine <~
@@ -897,8 +897,8 @@ object NBGTheorems {
       val b = sb.s
 
       val ~> = assume(b in z) { h1 =>
-        val l = assume(z === EmptySet)(h2 => axiomN(b)(sb).toImplies(h2.toImplies(b)(h1))(b in SingletonSet(EmptySet)))
-        val r = assume(z === SingletonSet(EmptySet))(h2 => h2.toImplies(b)(h1))
+        val l = assume(z === EmptySet)(h2 => axiomN(b)(sb).toImplies(h2.toIff(b)(h1))(b in SingletonSet(EmptySet)))
+        val r = assume(z === SingletonSet(EmptySet))(h2 => h2.toIff(b)(h1))
         axiomP(EmptySet, SingletonSet(EmptySet), z)(axiomNS)(singletonIsSet(axiomNS))(sz)(hyp).reduce(l)(r)
       }
       powerIff(z, SingletonSet(EmptySet))(sz).swap(subsetEqIff2(z, SingletonSet(EmptySet))(~>))
@@ -1122,7 +1122,7 @@ object NBGTheorems {
       domainIff1(-MemberRelation inter Identity, x, x)(sx)(sx)(intersectIff(-MemberRelation, Identity, xx)(sxx).swap(l #/\ r))
     }
 
-    russellEq.toImplies(x) join (~> combine <~)
+    russellEq.toIff(x) join (~> combine <~)
   }
 
   /** `~M(Russell)` */
