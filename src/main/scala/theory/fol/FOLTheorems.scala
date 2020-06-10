@@ -335,6 +335,13 @@ object FOLTheorems {
     assume(p)(tp => orCase(thm, assume(~p)(np => exFalso(q)(notIff(p)(np)(tp))), assume(q)(identity)))
   }
 
+  /** `p /\ ~q` given `~(p -> q)` */
+  def notImpliesToAnd[P <: Formula, Q <: Formula](thm: Theorem[~[P ->: Q]]): Theorem[P /\ ~[Q]] = {
+    val (p, q) = (thm.x.x, thm.x.y)
+    val t = notOr(iffCommutative(notIff(~p \/ q))(impliesTransitive(assume(~p \/ q)(h => orToImplies(h)), notIff(p ->: q)(thm))))
+    andCombine(notUnduplicate(andExtractLeft(t)), andExtractLeft(andCommutative(t)))
+  }
+
   /** `~r \/ ~q` given `r -> (p <-> q)` and `~p` */
   def notDefinition[P <: Formula, Q <: Formula, R <: Formula](iff: Theorem[R ->: (P <-> Q)], np: Theorem[~[P]]): Theorem[~[R] \/ ~[Q]] = {
     val (p, q, r) = (np.x, iff.y.y, iff.x)
@@ -458,6 +465,14 @@ object FOLTheorems {
     def reduce[R <: Formula](leftF: Theorem[P] => Theorem[R])(rightF: Theorem[Q] => Theorem[R]): Theorem[R] = reduce(assume(leftFormula)(leftF))(assume(rightFormula)(rightF))
     //def toImplies: Theorem[(P ->: False) ->: (Q ->: False) ->: False] = ???
     def toImpliesNot: Theorem[~[P] ->: ~[Q] ->: False] = orImplies(thm)
+  }
+
+  implicit class WrapperOrParen1[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[(P \/ Q) \/ R]) {
+    def rearrange: Theorem[P \/ (Q \/ R)] = orAssociativeIff(thm.x.x, thm.x.y, thm.y)(thm)
+  }
+
+  implicit class WrapperOrParen2[P <: Formula, Q <: Formula, R <: Formula](thm: Theorem[P \/ (Q \/ R)]) {
+    def rearrange: Theorem[(P \/ Q) \/ R] = orAssociativeIff(thm.x, thm.y.x, thm.y.y).swap(thm)
   }
 
   implicit class WrapperNot[P <: Formula](thm: Theorem[~[P]]) {

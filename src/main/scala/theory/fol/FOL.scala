@@ -29,6 +29,10 @@ object FOL {
   object Variable {
     def apply[I <: String](v: I): Variable[I] = new Variable(v)
     def apply[I <: String](implicit v: => ValueOf[I]): Variable[I] = new Variable(v.value)
+    def unapply[I <: String](f: Variable[I]): Option[String] = f match {
+      case v: Variable[I] => Some(v.id)
+      case _ => None
+    }
   }
   case class Implies[P <: Formula, Q <: Formula](x: P, y: Q) extends Formula
   case class Not[P <: Formula](x: P) extends Formula
