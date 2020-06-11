@@ -94,7 +94,7 @@ object Tableaux {
             case Member(z, EmptySet) =>
               val t = thm.as[Member[Q, EmptySet]]
               axiomN(z)(t.asSet).toImplies(t)
-            case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z)(thm.as[Member[Q, SingletonSet[R]]]) +: tail)
+            case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toIff(z)(thm.as[Member[Q, SingletonSet[R]]]) +: tail)
             case Member(z, PairSet(x, y)) => betaBranch(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z)))(thm.as[Member[Q, PairSet[R, S]]]))
             case Member(z, Universe) => tableaux(facts.withTheorem(thm), tail)
             case x === y if !facts.map.contains(thm.formula) && facts.membershipsRightArg.contains(x) =>
@@ -127,7 +127,7 @@ object Tableaux {
                 case Member(z, Union(x, y)) => betaBranch(notDefinition(unionContains(x, y, z), thm.as[~[Member[Q, Union[R, S]]]]))
                 case Member(z, Difference(x, y)) => betaBranch(notDefinition(differenceContains(x, y, z), thm.as[~[Member[Q, Difference[R, S]]]]))
                 case Member(z, EmptySet) => tableaux(facts.withTheorem(thm), tail)
-                case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toImplies(z).inverse(thm.as[~[Member[Q, SingletonSet[R]]]]) +: tail)
+                case Member(z, SingletonSet(x)) => tableaux(facts, singletonEq(x).toIff(z).inverse(thm.as[~[Member[Q, SingletonSet[R]]]]) +: tail)
                 case Member(z, PairSet(x, y)) => alphaConsequence(notOr(axiomP(x, y, z)(oops(IsSet(x)))(oops(IsSet(y)))(oops(IsSet(z))).inverse(thm.as[~[Member[Q, PairSet[R, S]]]])))
                 case Member(z, Universe) => tableaux(facts, universeContains(z).inverse(thm.as[~[Member[Q, Universe]]]) +: tail) // TODO?
                 case x === y =>
