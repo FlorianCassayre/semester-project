@@ -18,6 +18,7 @@ object FOL {
 
   }
   class Variable[I <: String](override val id: I) extends Formula with Named {
+    type T = Variable[I]
     def canEqual(other: Any): Boolean = other.isInstanceOf[Variable[_]]
     override def equals(other: Any): Boolean = other match {
       case that: Variable[_] => (that canEqual this) && id == that.id
@@ -82,6 +83,7 @@ object FOL {
     }
     def isValid: Boolean = context.invalid.forall(!_.get())
     def isDirty: Boolean = context.dirty
+    def isUniversal: Boolean = context.invalid.isEmpty
     def as[P <: Formula]: Theorem[P] = asInstanceOf[Theorem[P]]
     override def toString: String = formula.toString
   }

@@ -8,9 +8,9 @@ object NBGTheory {
 
   sealed abstract class AnySet {
   }
-  case object EmptySet extends AnySet
-  type EmptySet = EmptySet.type
+
   class SetVariable[I <: String](override val id: I) extends AnySet with Named {
+    type T = SetVariable[I]
     def canEqual(other: Any): Boolean = other.isInstanceOf[SetVariable[_]]
     override def equals(other: Any): Boolean = other match {
       case that: SetVariable[_] => (that canEqual this) && id == that.id
@@ -22,6 +22,10 @@ object NBGTheory {
   object SetVariable {
     def apply[I <: String](id: I): SetVariable[I] = new SetVariable(id)
     def apply[I <: String](implicit v: => ValueOf[I]): SetVariable[I] = new SetVariable(v.value)
+    def unapply[I <: String](f: SetVariable[I]): Option[String] = f match {
+      case v: SetVariable[I] => Some(v.id)
+      case _ => None
+    }
   }
 
   case class Member[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
@@ -29,6 +33,9 @@ object NBGTheory {
   case class SubsetStrict[A <: AnySet, B <: AnySet](a: A, b: B) extends Formula
 
   case class IsSet[A <: AnySet](s: A) extends Formula
+
+  case object EmptySet extends AnySet
+  type EmptySet = EmptySet.type
 
   case class PairSet[A <: AnySet, B <: AnySet](a: A, b: B) extends AnySet
   case class SingletonSet[A <: AnySet](a: A) extends AnySet
