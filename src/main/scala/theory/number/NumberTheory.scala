@@ -12,6 +12,25 @@ object NumberTheory {
   sealed abstract class Expr extends Ordinal {
   }
 
+  class NumberVariable[I <: String](override val id: I) extends Expr with Named {
+    type T = NumberVariable[I]
+    def canEqual(other: Any): Boolean = other.isInstanceOf[NumberVariable[_]]
+    override def equals(other: Any): Boolean = other match {
+      case that: NumberVariable[_] => (that canEqual this) && id == that.id
+      case _ => false
+    }
+    override def hashCode(): Int = id.hashCode
+    override def toString: Id = s"NumberVariable($id)"
+  }
+  object NumberVariable {
+    def apply[I <: String](v: I): NumberVariable[I] = new NumberVariable(v)
+    def apply[I <: String](implicit v: => ValueOf[I]): NumberVariable[I] = new NumberVariable(v.value)
+    def unapply[I <: String](f: NumberVariable[I]): Option[String] = f match {
+      case v: NumberVariable[I] => Some(v.id)
+      case _ => None
+    }
+  }
+
   case object Zero extends Expr
   type Zero = Zero.type
   case class Succ[A <: Expr](n: A) extends Expr

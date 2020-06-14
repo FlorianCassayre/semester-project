@@ -94,8 +94,6 @@ object NumberTheorems {
 
     type P[V <: Expr] = V === (Zero + V)
 
-    val tt: Theorem[P[Ind] ->: P[Succ[Ind]]] = induct
-
     mInduction[P, A](a === (Zero + a))(base)(induct)
   }
 
