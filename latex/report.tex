@@ -64,7 +64,7 @@
 
 It was decided that the program would be written in Scala, the reason being its expressiveness and its advanced type system. The version is 2.13 and no third-party libraries were used other than for testing purposes.
 
-The project is split into different modules, and each of them builds on top of the previous ones. The first module defines propositional logic. At the same time it introduces the concepts of axioms and theorems. Axioms are logical formulas that are assumed to hold in a context. Theorems can then be built upon axioms and other theorems. The second module defines set theory using the Von Neumann–Bernays–Gödel (abbreviated to NBG) axiom system. It extends the logic module by including new operators such as membership and equality that connect sets and formulas, and allows creation of arbitrary set functions. An extension module defines basic number theory, stated as sets. Unfortunately this module does not formally connect to set theory as it relies on unproven branches; it is nevertheless coherent (and formally verified) if we abstract this connection. It should also be noted that most of the number theory content was written in the scope of a different project, and later included in this framework for the sake of completeness. There is also a tableaux solver module that is not only able to prove or refute any propositional logic formula, but also provides proofs for a restricted version of set theory. Finally, a pretty printer was also implemented and provides unicode and latex frontends.
+The project is split into different modules, and each of them builds on top of the previous ones. The first module defines propositional logic. At the same time it introduces the concepts of axioms and theorems. Axioms are logical formulas that are assumed to hold in a context. Theorems can then be built upon axioms and other theorems. The second module defines set theory using the Von Neumann–Bernays–Gödel (abbreviated to NBG) axiom system. It extends the logic module by including new operators such as membership and equality that connect sets and formulas, and allows creation of arbitrary set functions. An extension module defines basic number theory, stated as sets. Unfortunately this module does not formally connect to set theory as it relies on unproven branches; it is nevertheless coherent (and formally verified) if we abstract this connection. It should also be noted that most of the number theory content was written in the scope of a different project, and later included in this framework for the sake of completeness. There is also a tableaux solver module that is not only able to prove or refute any propositional logic formula, but also provides proofs for a restricted version of set theory. Finally, a pretty printer with minimal parenthesizations was also implemented.
 
 I had been briefly introduced to LCF-like theorem proving libraries in past courses, but the verification phase was entirely performed by the interpreter. This makes them unpractical as the user needs to constantly re-execute the program in order to validate the proofs or test hypotheses. I initially wondered if it was possible to design a framework that relied only on types. Unfortunately null references and Nothing types would break correctness; and not to mention that generic type parameters are erased at compile-time. Moreover first logic is technically not describable as Scala types. Compilers are normally not Turing-complete, otherwise termination can't be guaranteed. Therefore they can only allow specific types of constraints; in particular scopes in type trees are not supported, despite them being required by universal and existential quantifiers in first order logic. However as it turns out skolemization can be used as a workaround to that; the details of that are described further down. It is good to keep in mind that Scala is known to possess soundness issues, in particular for out of the box experimental features (some of them are being used in this project). That is why I ultimately decided to go for a mixed approach such that the user is able to benefit from types when writing proofs, but also execute the program in order to formally verify correctness.
 
@@ -166,6 +166,34 @@ Eventually with enough of those, any tautology can be derived by using only type
 
 When it comes to set theory there different axiom system were elaborated. The most well known, is probably Zermelo–Fraenkel (ZF or ZFC). For this project however, I chose to use NBG which is a (practically) equivalent extension of ZFC. The motivations behind this decision are that it only uses a finite number of axioms (no schema) and is thus easier to represent with types. In addition to that, the book I was using (ref. needed) was based on this axiomatization.
 
+What stands NBG apart is the distinction it makes between sets and classes. This addresses Russell's paradox by restricting what operations can be performed on a given kind. According to this theory some objects are called proper sets while other are proper classes; in fact an object must be either one of these. NBG only defines membership on proper sets (a proper class cannot be the member of another class).
+
+\subsection{Notation}
+
+Proper set identifiers are written in lower case while classes are in upper case. The notations were largely inspired by the ones used in Mendelson's book.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|| c | c ||}
+ \hline
+ Symbol & Description \\ [0.5ex]
+ \hline\hline
+ $\text{M}(\cdot)$ & Proper set \\
+ $\mathbb{U}$ & Universal set \\
+ $<\cdot, \cdot>$ & Ordered pair set \\
+ $\mathcal{P}(\cdot)$ & Power set \\
+ $\bigcup(\cdot)$ & Union set \\
+ $\text{I}$ & Identity relation \\
+ $\text{Inv}(\cdot)$ & Inverse relation \\
+ $\text{R}(\cdot)$ & Range set of a relation \\
+ $\text{Inf}$ & The infinity set \\
+ $\text{Russell}$ & Russell's proper class \\
+ \hline
+\end{tabular}
+\caption{Reference for some of the notations used}
+\label{table:1}
+\end{table}
+
 \subsection{Skolemization}
 
 NBG requires a first order logic foundation. As said earlier the framework does not support scoped quantifiers. Instead, formulas have to be translated into Skolem normal form; that is all the quantifier declarations must appear before anything else. This enable to perform a process called skolemization that replaces existentially quantified variables by fresh functions, and that results in formulas that are equivalently satisfiable (but not necessarily equivalent, semantically speaking). This procedure is expected to be done by the user. The following example shows how quantifiers are moved to the front.
@@ -189,7 +217,39 @@ X = Y \rightarrow (z \in X \leftrightarrow z \in Y) & (2)
 
 The idea behind this example is intuitive. If $X = Y$ then any element satisfies the equivalence. On the other hand in order to prove equality one does not have any other choice than applying $\mathbf{f}$ in a universally quantified theorem. Thus, showing that a property holds for an element that does not appear elsewhere proves that it holds for any element.
 
-// To be continued
+\subsection{Achievements}
+
+One facet of this project was to find out how far it would be possible to go, namely what results could be proven.
+
+The framework supports many different concepts such as classification, operations on sets and relations. In total over 120 facts where formally proven with the framework. Among those:
+
+\begin{itemize}
+  \item Equality is an equivalence relation
+  \item The class of a set is preserved by equality
+  \item Element of ordered pairs are effectively ordered
+  \item Different properties between intersection, union, complement, difference, the empty and universal sets
+  \item Properties of the power and union set functions
+  \item Properties of the subset operator
+  \item Classes are preserved on finite set operations
+  \item Properties of particular relations
+  \item Existence of a proper class and proof that the universal set is a class
+\end{itemize}
+
+The detailed list of proven lemmas may be found in the test module. There is still a lot of work that could be done but this was all I managed to do in the scope of this semester project.
+
+\begin{figure}
+\begin{verbatim}
+  /** `~M(V)` */
+  def universeClass: Theorem[~[IsSet[Universe]]] =
+    assume(IsSet(Universe))(hyp =>
+      russellClass.toImplies(
+        subsetEqSet(Universe, Russell)(hyp)(subsetEqUniverse(Russell))
+    )).toNot
+\end{verbatim}
+\caption{Example of a proof, here showing that the universe is a proper class}
+\end{figure}
+
+During the completion of this work, I observed a limitation of skolemization by hindering readability and complexifying proofs. A theorem or an axiom as stated in natural first order logic can be split in different parts when converted to its skolem equivalent form. To improve readability it is possible to introduce intermediate representations, but at the same time we also would like to limit the amount of definitions to a minimum. Other than cognitive load issues I didn't find any obstacles that would prevent the framework from proving something.
 
 \section{Analytic tableaux}
 
@@ -211,13 +271,30 @@ The framework possesses more than 70 set theory related test cases, among those 
 
 \subsection{Connection to number theory}
 
+
+
+\[
+\begin{dcases*}
+0 := \emptyset & (1) \\
+n' := n \cup \{n\} & (2) \\
+\end{dcases*}
+\]
+
+\begin{verbatim}
+  def mInduction[P[N <: Expr] <: Formula, R <: Expr](p: P[R])
+    (base: Theorem[P[Zero]])(inductive: Theorem[P[Ind] ->: P[Succ[Ind]]]):
+    Theorem[P[R]]
+\end{verbatim}
+
 \subsection{Tree printing}
+
+The framework implements a "pretty" printer module which can convert an abstract tree to a string representation, while also taking precedence rules into account. In addition, no superfluous pairs of parenthesis are included in the result.
 
 \section{Conclusion}
 
 
 \begin{acks}
-Professor Viktor Kunčak for the project idea proposal and their supervision, Romain Edelmann for their punctual help, all the LARA collaborators and students.
+Professor Viktor Kunčak for the project idea proposal and the supervision, Romain Edelmann for his punctual but precious help, and all the LARA collaborators for sharing their interesting project.
 \end{acks}
 
 \end{document}
