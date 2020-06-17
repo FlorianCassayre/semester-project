@@ -2,6 +2,23 @@
 
 \usepackage{mathtools}
 
+\newcommand*\lif{\mathbin{\to}}
+\usepackage{forest}
+\forestset{
+  smullyan tableaux/.style={
+    for tree={
+      math content
+    },
+    where n children=1{
+      !1.before computing xy={l=\baselineskip},
+      !1.no edge
+    }{},
+    closed/.style={
+      label=below:$\times$
+    },
+  },
+}
+
 \AtBeginDocument{%
   \providecommand\BibTeX{{%
     \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
@@ -28,7 +45,8 @@
   Safety is ensured by the compiler through type checking,
   while formal soundness is guaranteed by the execution.
   This hybrid verification process allows the framework to be used interactively
-  inside a Scala IDE, and therefore be considered as a proof assistant.
+  inside an IDE. It is shown how types can encode logic formulas,
+  in particular first order logic and higher order theories.
 \end{abstract}
 
 %% http://dl.acm.org/ccs.cfm
@@ -64,9 +82,9 @@
 
 It was decided that the program would be written in Scala, the reason being its expressiveness and its advanced type system. The version is 2.13 and no third-party libraries were used other than for testing purposes.
 
-The project is split into different modules, and each of them builds on top of the previous ones. The first module defines propositional logic. At the same time it introduces the concepts of axioms and theorems. Axioms are logical formulas that are assumed to hold in a context. Theorems can then be built upon axioms and other theorems. The second module defines set theory using the Von Neumann–Bernays–Gödel (abbreviated to NBG) axiom system. It extends the logic module by including new operators such as membership and equality that connect sets and formulas, and allows creation of arbitrary set functions. An extension module defines basic number theory, stated as sets. Unfortunately this module does not formally connect to set theory as it relies on unproven branches; it is nevertheless coherent (and formally verified) if we abstract this connection. It should also be noted that most of the number theory content was written in the scope of a different project, and later included in this framework for the sake of completeness. There is also a tableaux solver module that is not only able to prove or refute any propositional logic formula, but also provides proofs for a restricted version of set theory. Finally, a pretty printer with minimal parenthesizations was also implemented.
+The project is split across different modules, and each of them builds on top of the previous ones. The first module defines propositional logic while introducing at the same time the concepts of axioms and theorems. Axioms are logical formulas that are assumed to hold in a context. Theorems can then be built upon axioms and other theorems. The second module defines set theory using the Von Neumann–Bernays–Gödel axiom system (further abbreviated to NBG). It extends the logic module by including new operators such as membership and equality that connect sets and formulas, and allows creation of arbitrary set functions. An extension module defines basic number theory, stated as sets. Unfortunately this module does not formally connect to set theory as it relies on unproven branches; it is nevertheless coherent (and formally verified) if we abstract this connection. It should also be noted that most of the number theory content was written in the scope of a different project, and later included in this framework for the sake of completeness. There is also a tableaux solver module that is not only able to prove or refute any propositional logic formula, but also deterministically provides proofs for a restricted version of set theory. Finally, a pretty printer with minimal parenthesization was also implemented.
 
-I had been briefly introduced to LCF-like theorem proving libraries in past courses, but the verification phase was entirely performed by the interpreter. This makes them unpractical as the user needs to constantly re-execute the program in order to validate the proofs or test hypotheses. I initially wondered if it was possible to design a framework that relied only on types. Unfortunately null references and Nothing types would break correctness; and not to mention that generic type parameters are erased at compile-time. Moreover first logic is technically not describable as Scala types. Compilers are normally not Turing-complete, otherwise termination can't be guaranteed. Therefore they can only allow specific types of constraints; in particular scopes in type trees are not supported, despite them being required by universal and existential quantifiers in first order logic. However as it turns out skolemization can be used as a workaround to that; the details of that are described further down. It is good to keep in mind that Scala is known to possess soundness issues, in particular for out of the box experimental features (some of them are being used in this project). That is why I ultimately decided to go for a mixed approach such that the user is able to benefit from types when writing proofs, but also execute the program in order to formally verify correctness.
+I had been briefly introduced to LCF-like theorem proving libraries in past courses, but in these frameworks the verification phase was performed exclusively by the interpreter. This makes them unpractical as the user needs to constantly re-execute the program in order to validate the proofs or test hypotheses. I initially wondered if it was possible to design a framework that relied only on types. Unfortunately null references and Nothing types would break correctness; and not to mention that generic type parameters are erased at compile-time. Moreover first logic is technically not describable as Scala types. Compilers are normally not Turing-complete, otherwise termination can't be guaranteed. Therefore they can only allow specific types of constraints; in particular scopes in type trees are not supported, despite them being required by universal and existential quantifiers in first order logic. However as it turns out skolemization can be used as a workaround to that; the details of that are described further down. It is good to keep in mind that Scala is known to possess soundness issues, in particular for out of the box experimental features (some of them are being used in this project). That is why I ultimately decided to go for a mixed approach such that the user is able to benefit from types when writing proofs, but also execute the program in order to formally verify correctness.
 
 \section{Propositional logic}
 
@@ -74,7 +92,7 @@ I had been briefly introduced to LCF-like theorem proving libraries in past cour
 
 
 
-Scala's makes it possible to define custom operators, though precedence is hard to control. The framework allows such operators to be used over normal prefix case class application. The following code snippet shows how the DSL may be used for both values and types.
+Scala makes it possible to define custom operators, though precedence is hard to control. The framework allows such operators to be used over normal prefix case class application. A similar technique can be applied to types. The following code snippet shows how the DSL may be used for both values and types.
 
 \begin{verbatim}
   val (p, q) = (Variable["p"], Variable["q"])
@@ -83,7 +101,7 @@ Scala's makes it possible to define custom operators, though precedence is hard 
   val _: Iff[Implies[Not[p.T], And[q.T, True]], Or[p.T, q.T]] = f
 \end{verbatim}
 
-Proved facts are represented as formulas stored inside a wrapper class. Axioms are the only methods allowed to instanciate it - inevitably restricting the kind of formulas that can be held in this wrapper.
+Proved facts are represented as formulas stored inside a wrapper class. Axioms are the only methods allowed to instanciate it - thus inevitably restricting the kind of formulas that can be held in this wrapper.
 
 \begin{verbatim}
   final class Theorem[F <: Formula] private (f: F)
@@ -91,14 +109,18 @@ Proved facts are represented as formulas stored inside a wrapper class. Axioms a
 
 \subsection{Axiomatization and contexts}
 
-Natural deduction relies on two simple concepts: introduction and elimination. In logic these can be translated into the assumption (or hypothesis) and the modus ponens rules. In the framework the axioms have the following signature.
+Natural deduction relies on two simple concepts: introduction and elimination. In logic these can be translated into the assumption (or hypothesis) and the modus ponens rules. In the framework these axioms have the following signature.
+
+\[
+\frac{p \vdash q}{\vdash p \rightarrow q} \qquad \frac{\vdash p \rightarrow q \quad p}{\vdash q}
+\]
 
 \begin{verbatim}
   def assume[P <: Formula, Q <: Formula](p: P)(cert: Theorem[P] => Theorem[Q]): Theorem[P ->: Q]
   def modusPonens[P <: Formula, Q <: Formula](pq: Theorem[P ->: Q], p: Theorem[P]): Theorem[Q]
 \end{verbatim}
 
-Furthermore if we also assume the existence of the falsity constant $\bot$, we are able to build a proof for a formula if and only if it is a tautology. Further operators can easily be defined as equivalences between a composition of implications and falses.
+Furthermore if we also assume the existence of a falsity constant $\bot$, we are able to build a proof for a formula if and only if it is a tautology. Further operators can easily be defined as equivalences between a composition of implications and falses.
 
 Modus ponens is implemented by checking that the left hand side of the implication equals the other argument, and returns a new instance of a theorem that has for value the implication's right hand side.
 A naive implementation of the assumption rule may permit the hypothesis to escape their scope using impure variables (which obviously leads to unsoundness), as shown here.
@@ -111,12 +133,11 @@ A naive implementation of the assumption rule may permit the hypothesis to escap
   // Anything can now be proven using `t`
 \end{verbatim}
 
-To prevent that we need to support contexts. In a single-threaded program it consists of storing a reference inside the hypothesis. This allows the modus ponens rule to check that the theorem does not come from a lower context, or throw an exception otherwise. Proven facts are said to be universal if they belong to the top level context. We are mainly interested by proofs written in the universal context, or at least proofs that are valid regardless of the context.
+To prevent that we need to support contexts. In a single-threaded program (which we assumed in the scope of this project) it consists of storing a reference inside the hypothesis. This allows the modus ponens rule to check that the theorem does not come from a lower-level context, or throw an exception otherwise. Proven facts are said to be universal if they belong to the top level context. We are mainly interested by proofs written in the universal context; or equivalently stated, proofs that are valid regardless of the context.
 
 Note that it is entirely possible to define further axioms using exclusively the assumption rule: the hypothesis being the axiom and the context becoming the "new" universe. This is unpractical (and thus not used) but it makes an interesting connection with model theory.
 
 \subsection{Writing proofs}
-
 
 Proofs can be written in two ways. Either by defining a tautology schema, where the universally quantified variables are passed as arguments.
 
@@ -134,8 +155,7 @@ Or by taking a theorem and transforming it into another.
     modusPonens(iffToImplies1(pq.formula.x, pq.formula.y), pq)
 \end{verbatim}
 
-Both methods are semantically equivalent, but the first one tends to be more verbose than the second.
-
+Both methods are semantically equivalent, but the first one tends to be more verbose than the second. The second method sometimes requires the context to be synthesized using the introduction axiom.
 
 Theorems containing an implication or an equivalence provide a convenient application method that acts as a shorthand for modus ponens.
 
@@ -158,15 +178,13 @@ More generally, extensions like this one rely on an implicit type class that is 
 
 Eventually with enough of those, any tautology can be derived by using only type class methods.
 
-
-
 \section{Set theory}
 
 \subsection{NBG}
 
-When it comes to set theory there different axiom system were elaborated. The most well known, is probably Zermelo–Fraenkel (ZF or ZFC). For this project however, I chose to use NBG which is a (practically) equivalent extension of ZFC. The motivations behind this decision are that it only uses a finite number of axioms (no schema) and is thus easier to represent with types. In addition to that, the book I was using (ref. needed) was based on this axiomatization.
+When it comes to set theory different axiom systems were elaborated. The most well known is probably Zermelo–Fraenkel (ZF or ZFC). For this project however, I chose to use NBG which is a (practically) equivalent extension of ZFC. The motivations behind this decision are that it only uses a finite number of axioms (no schema) and is thus easier to represent with types. In addition to that, the book I was using \cite{Mendelson} was based on this axiomatization and helped me study and formalize the material.
 
-What stands NBG apart is the distinction it makes between sets and classes. This addresses Russell's paradox by restricting what operations can be performed on a given kind. According to this theory some objects are called proper sets while other are proper classes; in fact an object must be either one of these. NBG only defines membership on proper sets (a proper class cannot be the member of another class).
+What stands NBG apart is the distinction it makes between sets and classes. This addresses Russell's paradox by restricting what operations can be performed on a given kind. According to this theory some objects are called "proper" sets while other are proper classes; in fact an object must be either one of these. For example NBG only defines membership on proper sets (a proper class cannot be the member of another class).
 
 \subsection{Notation}
 
@@ -181,11 +199,6 @@ Proper set identifiers are written in lower case while classes are in upper case
  $\text{M}(\cdot)$ & Proper set \\
  $\mathbb{U}$ & Universal set \\
  $<\cdot, \cdot>$ & Ordered pair set \\
- $\mathcal{P}(\cdot)$ & Power set \\
- $\bigcup(\cdot)$ & Union set \\
- $\text{I}$ & Identity relation \\
- $\text{Inv}(\cdot)$ & Inverse relation \\
- $\text{R}(\cdot)$ & Range set of a relation \\
  $\text{Inf}$ & The infinity set \\
  $\text{Russell}$ & Russell's proper class \\
  \hline
@@ -196,7 +209,7 @@ Proper set identifiers are written in lower case while classes are in upper case
 
 \subsection{Skolemization}
 
-NBG requires a first order logic foundation. As said earlier the framework does not support scoped quantifiers. Instead, formulas have to be translated into Skolem normal form; that is all the quantifier declarations must appear before anything else. This enable to perform a process called skolemization that replaces existentially quantified variables by fresh functions, and that results in formulas that are equivalently satisfiable (but not necessarily equivalent, semantically speaking). This procedure is expected to be done by the user. The following example shows how quantifiers are moved to the front.
+NBG requires a first order logic module as a foundation. As said earlier the framework does not support scoped quantifiers. Instead, formulas have to be translated into Skolem normal form; that is all the quantifier declarations must appear before anything else. This enable to perform a process called skolemization that replaces existentially quantified variables by fresh functions, and that results in formulas that are equivalently satisfiable (but not necessarily equivalent, semantically speaking). This procedure is expected to be done by the user and cannot be done dynamically \emph{per se}, for the reasons mentioned previously. The following example shows how quantifiers are moved to the front.
 
 \[
 \forall X, Y. (\forall z. z \in X \leftrightarrow z \in Y) \leftrightarrow X = Y \iff
@@ -215,13 +228,13 @@ X = Y \rightarrow (z \in X \leftrightarrow z \in Y) & (2)
 \end{dcases*}
 \]
 
-The idea behind this example is intuitive. If $X = Y$ then any element satisfies the equivalence. On the other hand in order to prove equality one does not have any other choice than applying $\mathbf{f}$ in a universally quantified theorem. Thus, showing that a property holds for an element that does not appear elsewhere proves that it holds for any element.
+The idea behind this example is relatively intuitive. If $X = Y$ then any element satisfies the equivalence. On the other hand in order to prove equality one does not have any other choice than applying $\mathbf{f}$ in a universally quantified theorem. Thus, showing that a property holds for an element that does not appear elsewhere proves that it holds for any element.
 
 \subsection{Achievements}
 
 One facet of this project was to find out how far it would be possible to go, namely what results could be proven.
 
-The framework supports many different concepts such as classification, operations on sets and relations. In total over 120 facts where formally proven with the framework. Among those:
+The framework supports many different concepts such as classification, operations on sets and relations. In total over 120 facts were formally proven with the framework. Among those:
 
 \begin{itemize}
   \item Equality is an equivalence relation
@@ -246,32 +259,63 @@ The detailed list of proven lemmas may be found in the test module. There is sti
         subsetEqSet(Universe, Russell)(hyp)(subsetEqUniverse(Russell))
     )).toNot
 \end{verbatim}
-\caption{Example of a proof, here showing that the universe is a proper class}
+\caption{Example of a proof, here using an argument by contradiction to show that the universe is a proper class}
 \end{figure}
 
-During the completion of this work, I observed a limitation of skolemization by hindering readability and complexifying proofs. A theorem or an axiom as stated in natural first order logic can be split in different parts when converted to its skolem equivalent form. To improve readability it is possible to introduce intermediate representations, but at the same time we also would like to limit the amount of definitions to a minimum. Other than cognitive load issues I didn't find any obstacles that would prevent the framework from proving something.
+During the completion of this work, I observed a limitation of skolemization by hindering readability and complexifying proofs. A theorem or an axiom as stated in natural first order logic can be split in different parts when converted to its skolem equivalent form. To improve readability it is possible to introduce intermediate representations, but at the same time we also would like to limit the amount of definitions to a minimum. Other than cognitive load issues I didn't find any obstacles that would prevent the framework from proving something. An alternative to skolemization that may address some of these usability limitations is proposed in the conclusion.
 
 \section{Analytic tableaux}
 
 \subsection{Propositional logic}
 
-Analytical tableaux is a procedure that can build a proof for a given formula. What is interesting with it is that it suits very well to deductive proof systems because the simplification schemas can be categorized and individually proven. Then the procedure can use these schemas to prove any formula.
+Analytical tableaux is a mechanical procedure that can build a proof for a given formula. What is interesting with it is that it suits very well to deductive proof systems because the simplification schemas can be categorized and individually proven. Then the procedure can use these schemas to prove any formula.
 
 I chose to implement this solver in this project for demonstration purposes; the proofs in the other modules are all statically written. I arbitrarily decided that the normal form was made of conjunctions, disjunctions and negations. While executing the procedure, top level terms that are not in the normal form will be transformed. Otherwise the formula falls in two cases: either it is a $\alpha$ type (extract consequences) or a $\beta$ type (branch).
 
-This procedure is decidable and any tautology will be proven correctly.
+This procedure is decidable and any tautology will be proven correctly, while non tautologies will terminate and return an empty result.
 
 \subsection{Restricted set theory}
 
-What's interesting was to extend the basic propositional logic procedure to set theory. A general procedure for set theory does not exist (the problem is in fact undecidable). Instead we have to restrict ourselves to a subset of the entire theory. In the paper (ref. needed), they described a procedure that can reason with equalities, subsets and memberships.
+What was interesting was to extend the basic propositional logic procedure to set theory. A general procedure for set theory does not exist (the problem is in fact undecidable). Instead we have to restrict ourselves to a subset of the entire theory. In the paper \cite{Tableaux:sets}, they described a procedure that can reason with equalities, subsets and memberships.
 
 The framework possesses more than 70 set theory related test cases, among those half of them were successfully proven by the tableau solver without the special cut rule. As explained in the paper the cut rule is rarely ever required in practice. I tried to implement it nevertheless but did not manage to get it working correctly. The problem being that the procedure gets stuck in an ever growing \emph{ad infinitum} proof. Unfortunately I did not find a fix for that.
+
+\begin{figure}
+\begin{forest}
+  smullyan tableaux
+  [{\{x, y\} \neq \{x\} \cup \{y\}}
+    [{c \notin \{x, y\}}
+      [{c \in \{x\} \cup \{y\}}
+        [{c \neq x}
+          [{c \neq y}
+            [{c = x}, closed]
+            [{c = y}, closed]
+          ]
+        ]
+      ]
+    ]
+    [{c \in \{x, y\}}
+      [{c \notin \{x\} \cup \{y\}}
+        [{c = x}
+          [{c \neq x}, closed]
+        ]
+        [{c = y}
+          [{c \neq x}
+            [{c \neq y}, closed]
+          ]
+        ]
+      ]
+    ]
+  ]
+\end{forest}
+\caption{Example of applying the tableaux procedure on $\{x, y\} = \{x\} \cup \{y\}$}
+\end{figure}
 
 \section{Other features}
 
 \subsection{Connection to number theory}
 
-
+Set theory allows the expression of other theories. For instance NBG defines the natural numbers using this recursive formulation.
 
 \[
 \begin{dcases*}
@@ -280,22 +324,35 @@ n' := n \cup \{n\} & (2) \\
 \end{dcases*}
 \]
 
+It is possible to (but was unfortunately not completed) define Peano's arithmetic without introducing new axioms. The newly expressed lemmas are refered to as "meta axioms". As an example, the induction rule is conveniently defined as following in the framework.
+
 \begin{verbatim}
   def mInduction[P[N <: Expr] <: Formula, R <: Expr](p: P[R])
     (base: Theorem[P[Zero]])(inductive: Theorem[P[Ind] ->: P[Succ[Ind]]]):
     Theorem[P[R]]
 \end{verbatim}
 
+It was pointed out to me that if any set could be casted to a number expression then the (meta) axiom system is unsound. The solution is to include additional assumptions on the arguments (for instance through implicit arguments), and provide more informations on the resulting theorems.
+
+It would have been interesting to add tableaux solving support for basic number theory.
+
 \subsection{Tree printing}
 
 The framework implements a "pretty" printer module which can convert an abstract tree to a string representation, while also taking precedence rules into account. In addition, no superfluous pairs of parenthesis are included in the result.
 
-\section{Conclusion}
+\section{Conclusion and further work}
 
+This project was a great opportunity to apply the knowledge I had acquired in previous courses, learn various new concepts, reproduce results from publications and experiment different techniques. In particular it provided me an opportunity to discover the foundations of set theory in a surprisingly very practical way.
+From the experiments I have conducted throughout this semester I can safely conclude that having types in a proof system written on top of an existing programming language is a useful feature to have. Not only does it provide explicit documentation to the reader but it also simplifies the very process of writing proofs by making it both interactive and assisting.
+
+The framework could be ported to Scala Dotty and benefit from more powerful type capabilities such as type matching and type refinements. In addition, skolemization could be upgraded to Hilbert's operator, which is seemingly also representable in this type system.
 
 \begin{acks}
-Professor Viktor Kunčak for the project idea proposal and the supervision, Romain Edelmann for his punctual but precious help, and all the LARA collaborators for sharing their interesting project.
+Professor Viktor Kunčak for the project idea proposal and the supervision, Romain Edelmann for having developed mini-welder which was a great source of inspiration, and all the LARA collaborators for discussing about their interesting projects.
 \end{acks}
+
+\bibliographystyle{unsrt}
+\bibliography{references}
 
 \end{document}
 \endinput
