@@ -197,7 +197,7 @@ Proper set identifiers are written in lower case while classes are in upper case
  Symbol & Description \\ [0.5ex]
  \hline\hline
  $\text{M}(\cdot)$ & Proper set \\
- $\mathbb{U}$ & Universal set \\
+ $\mathbb{U}$ & Universal class \\
  $<\cdot, \cdot>$ & Ordered pair set \\
  $\text{Inf}$ & The infinity set \\
  $\text{Russell}$ & Russell's proper class \\
@@ -272,7 +272,7 @@ Analytical tableaux is a mechanical procedure that can build a proof for a given
 
 I chose to implement this solver in this project for demonstration purposes; the proofs in the other modules are all statically written. I arbitrarily decided that the normal form was made of conjunctions, disjunctions and negations. While executing the procedure, top level terms that are not in the normal form will be transformed. Otherwise the formula falls in two cases: either it is a $\alpha$ type (extract consequences) or a $\beta$ type (branch).
 
-This procedure is decidable and any tautology will be proven correctly, while non tautologies will terminate and return an empty result.
+This procedure is sound, complete, and terminating, which makes it a decision procedure for propositional logic.
 
 \subsection{Restricted set theory}
 
